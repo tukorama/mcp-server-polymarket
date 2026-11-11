@@ -14,6 +14,8 @@ from mcp_server_polymarket.ops import (  # noqa: F401
     sports,
     streams,
     system,
+    trading,
+    wallet,
 )
 from mcp_server_polymarket.ops.registry import (
     OPERATIONS,
