@@ -124,6 +124,11 @@ class Identity:
             return session
         return self.store.load_perps()
 
+    @property
+    def signature_type(self) -> int | None:
+        """The wallet's signature type, as account reads and orders need it."""
+        return self.settings.signature_type
+
     @cached_property
     def wallet_address(self) -> str | None:
         if self.settings.wallet_address:

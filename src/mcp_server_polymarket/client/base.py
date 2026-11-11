@@ -88,10 +88,13 @@ class ApiClient:
         identity: Identity,
         *,
         transport: httpx2.AsyncBaseTransport | None = None,
+        ws_transport: httpx2.AsyncBaseTransport | None = None,
     ) -> None:
         self.settings = settings
         self.identity = identity
         self.transport = transport
+        self.ws_transport = ws_transport
+        self._ws: httpx2.AsyncClient | None = None
         self._http = httpx2.AsyncClient(
             follow_redirects=False,
             timeout=settings.http_timeout,
@@ -106,8 +109,21 @@ class ApiClient:
     def http(self) -> httpx2.AsyncClient:
         return self._http
 
+    @property
+    def ws(self) -> httpx2.AsyncClient:
+        """A separate client for WebSockets, so tests can give it an ASGI transport."""
+        if self._ws is None:
+            self._ws = httpx2.AsyncClient(
+                timeout=self.settings.http_timeout,
+                transport=self.ws_transport,
+                headers={"User-Agent": f"mcp-server-polymarket/{__version__}"},
+            )
+        return self._ws
+
     async def aclose(self) -> None:
         await self._http.aclose()
+        if self._ws is not None:
+            await self._ws.aclose()
 
     def base_url(self, service: Service) -> str:
         return self.settings.url(service.value)

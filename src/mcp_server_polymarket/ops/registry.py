@@ -59,6 +59,7 @@ class Runtime:
         settings: Settings,
         *,
         transport: httpx2.AsyncBaseTransport | None = None,
+        ws_transport: httpx2.AsyncBaseTransport | None = None,
         caps: Capabilities | None = None,
     ) -> "Runtime":
         settings.register_secrets()
@@ -69,7 +70,7 @@ class Runtime:
         return cls(
             settings=settings,
             identity=identity,
-            client=ApiClient(settings, identity, transport=transport),
+            client=ApiClient(settings, identity, transport=transport, ws_transport=ws_transport),
             cache=JsonCache(settings.resolved_cache_dir),
             caps=caps or Capabilities.detect(settings, identity),
         )

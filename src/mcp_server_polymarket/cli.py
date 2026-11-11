@@ -69,9 +69,10 @@ def _serve(args: argparse.Namespace, settings: Settings) -> int:
 
 
 def _tools(settings: Settings) -> int:
-    from mcp_server_polymarket.ops import Runtime, enabled_operations, hidden_operations
+    from mcp_server_polymarket.ops import enabled_operations, hidden_operations
+    from mcp_server_polymarket.server import detect_capabilities
 
-    caps = Runtime.create(settings).caps
+    caps = detect_capabilities(settings)
     operations = enabled_operations(caps)
     width = max((len(op.name) for op in operations), default=10)
     for op in operations:

@@ -105,7 +105,11 @@ def _limit(value: Any) -> Any:
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_prefix="POLYMARKET_", env_file=".env", extra="ignore", env_ignore_empty=True
+        env_prefix="POLYMARKET_",
+        env_file=".env",
+        extra="ignore",
+        env_ignore_empty=True,
+        validate_assignment=True,
     )
 
     # Signing identity. Without a key the server only reads.
