@@ -1,0 +1,5 @@
+{
+  "dependencies": ["."],
+  "graphs": { "polymarket": "./graph.py:graph" },
+  "env": ".env"
+}
