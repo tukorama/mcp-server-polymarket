@@ -5,7 +5,7 @@ from pydantic import Field
 from mcp_server_polymarket.client import endpoints as ep
 from mcp_server_polymarket.client.paging import epoch_ms
 from mcp_server_polymarket.errors import InvalidRequest
-from mcp_server_polymarket.models.base import CompactModel, Raw
+from mcp_server_polymarket.models.base import CompactModel, Raw, WriteResult
 from mcp_server_polymarket.ops.perps_market import perps_slim
 from mcp_server_polymarket.ops.registry import Call, Cursor, When, operation
 
@@ -156,3 +156,27 @@ async def get_my_perps_blp(
         result.liquidations = [Raw.model_validate(perps_slim(r)) for r in body.get("data") or []]
         result.next_cursor = body.get("cursor") or None
     return result
+
+
+async def _describe_blp(call: Call, instrument_id: int, active: bool) -> str:
+    action = "Subscribe to" if active else "Stop"
+    return (
+        f"{action} backstop liquidations on instrument {instrument_id}? Subscribing sets 3x "
+        "leverage there and locks it."
+    )
+
+
+@operation(
+    "Set backstop liquidity provision",
+    toolset=TOOLSET,
+    requires=("perps_session",),
+    gate="trading",
+    describe=_describe_blp,
+)
+async def set_perps_blp_enrollment(call: Call, instrument_id: int, active: bool) -> WriteResult:
+    """For enrolled backstop liquidity providers: take over liquidations on an instrument, or
+    stop. Subscribing fixes leverage there at 3x."""
+    data = await call.json(
+        ep.PERPS_BLP_ENROLL, body={"instrument_id": instrument_id, "active": active}
+    )
+    return WriteResult(status="done", raw=perps_slim(data) if isinstance(data, dict) else data)

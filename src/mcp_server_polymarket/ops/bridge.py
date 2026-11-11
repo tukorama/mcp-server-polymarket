@@ -7,7 +7,7 @@ from pydantic import Field
 from mcp_server_polymarket.client import endpoints as ep
 from mcp_server_polymarket.client.cache import HOUR
 from mcp_server_polymarket.errors import InvalidRequest
-from mcp_server_polymarket.models.base import CompactModel, CursorPage, Raw
+from mcp_server_polymarket.models.base import CompactModel, CursorPage, Raw, WriteResult
 from mcp_server_polymarket.ops.registry import Call, Cursor, operation
 
 TOOLSET = "bridge"
@@ -129,7 +129,8 @@ async def get_bridge_status(
     )
 
 
-class BridgeAddresses(CompactModel):
+class BridgeAddresses(WriteResult):
+    status: str = "created"
     for_wallet: str
     addresses: dict[str, Any]
     note: str | None = None
@@ -146,6 +147,56 @@ async def create_deposit_addresses(call: Call) -> BridgeAddresses:
             "No wallet is configured.", hint="Set POLYMARKET_WALLET_ADDRESS to your wallet."
         )
     body = await call.json(ep.BRIDGE_DEPOSIT, body={"address": wallet}, headers=_headers(call))
+    body = body if isinstance(body, dict) else {}
+    return BridgeAddresses(
+        for_wallet=wallet, addresses=body.get("address") or {}, note=body.get("note")
+    )
+
+
+async def _describe_withdrawal(
+    call: Call, to_chain_id: str, to_token_address: str, recipient: str | None = None
+) -> str:
+    target = recipient or call.identity.wallet_address
+    return (
+        f"Create bridge withdrawal addresses that send to {target} on chain {to_chain_id} "
+        f"(token {to_token_address})? Any pUSD sent to them later leaves Polymarket."
+    )
+
+
+@operation(
+    "Create bridge withdrawal addresses",
+    toolset=TOOLSET,
+    gate="transfers",
+    describe=_describe_withdrawal,
+)
+async def create_withdrawal_addresses(
+    call: Call,
+    to_chain_id: Annotated[str, Field(description="Destination chain id, e.g. 8453 for Base.")],
+    to_token_address: Address,
+    recipient: Annotated[
+        str | None,
+        Field(description="Who receives it. Empty: your wallet. Others must be allowlisted."),
+    ] = None,
+) -> BridgeAddresses:
+    """Addresses that bridge pUSD out of Polymarket to a token on another chain. Funds move only
+    when pUSD is sent to them, which this tool does not do."""
+    from mcp_server_polymarket import safety
+
+    wallet = call.identity.wallet_address
+    if not wallet:
+        raise InvalidRequest("No wallet is configured.", hint="Set POLYMARKET_WALLET_ADDRESS.")
+    target = recipient or wallet
+    safety.check_recipient(call, target, [wallet, call.identity.signer_address])
+    body = await call.json(
+        ep.BRIDGE_WITHDRAW,
+        body={
+            "address": wallet,
+            "toChainId": to_chain_id,
+            "toTokenAddress": to_token_address,
+            "recipientAddr": target,
+        },
+        headers=_headers(call),
+    )
     body = body if isinstance(body, dict) else {}
     return BridgeAddresses(
         for_wallet=wallet, addresses=body.get("address") or {}, note=body.get("note")

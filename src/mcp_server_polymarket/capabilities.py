@@ -16,14 +16,14 @@ REQUIREMENTS = {
     "POLYMARKET_API_SECRET, POLYMARKET_API_PASSPHRASE and POLYMARKET_ADDRESS",
     "signer": "a signing key: set POLYMARKET_PRIVATE_KEY (or _FILE) and POLYMARKET_WALLET_ADDRESS, "
     "with the `signing` extra installed",
-    "owner_signer": "the wallet owner's key (POLYMARKET_SIGNER_ROLE=owner)",
+    "owner_signer": "the wallet owner's signing key: POLYMARKET_PRIVATE_KEY and "
+    "POLYMARKET_WALLET_ADDRESS, not a session key",
     "relayer_key": "a Relayer API key: POLYMARKET_RELAYER_API_KEY and "
     "POLYMARKET_RELAYER_API_KEY_ADDRESS",
     "perps_session": "a Perps session: run `mcp-server-polymarket auth --perps`",
     "perps_signer": "a Perps session that can sign: `mcp-server-polymarket auth --perps` without "
     "--read-only",
-    "perps_owner": "the Perps account owner's key: POLYMARKET_PRIVATE_KEY with "
-    "POLYMARKET_SIGNER_ROLE=owner",
+    "perps_owner": "the Perps account owner's key: POLYMARKET_PRIVATE_KEY, not a session key",
 }
 
 GATES = {

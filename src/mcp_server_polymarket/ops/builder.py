@@ -7,7 +7,7 @@ from pydantic import Field
 from mcp_server_polymarket.client import endpoints as ep
 from mcp_server_polymarket.client.paging import epoch_ms, epoch_seconds
 from mcp_server_polymarket.errors import InvalidRequest
-from mcp_server_polymarket.models.base import CompactModel, CursorPage, Raw
+from mcp_server_polymarket.models.base import CompactModel, CursorPage, Raw, WriteResult
 from mcp_server_polymarket.models.data import DataRow, rows, slim
 from mcp_server_polymarket.ops.perps_market import perps_slim
 from mcp_server_polymarket.ops.registry import Call, Cursor, When, operation
@@ -159,3 +159,57 @@ async def get_my_perps_builder(
         earnings=[Raw.model_validate(perps_slim(r)) for r in body.get("data") or []],
         next_cursor=body.get("cursor") or None,
     )
+
+
+async def _describe_builder_fee(call: Call, max_fee_rate: str) -> str:
+    builder = call.settings.perps_builder
+    return (
+        f"Let builder {builder} charge up to {max_fee_rate} (fraction of notional) on your Perps "
+        "orders routed through it? Set 0 to revoke."
+    )
+
+
+@operation(
+    "Approve a Perps builder fee",
+    toolset=TOOLSET,
+    requires=("perps_session", "perps_owner"),
+    gate="trading",
+    describe=_describe_builder_fee,
+)
+async def set_perps_builder_approval(
+    call: Call,
+    max_fee_rate: Annotated[
+        str, Field(pattern=r"^0(\.\d+)?$", description="e.g. 0.0005; 0 revokes; at most 0.001.")
+    ],
+) -> WriteResult:
+    """Approve, change or revoke the fee the builder configured in POLYMARKET_PERPS_BUILDER may
+    charge on your Perps orders. Signed by the account owner."""
+    import secrets
+    import time
+    from decimal import Decimal
+
+    from mcp_server_polymarket import safety
+    from mcp_server_polymarket.ops.perps_trading import owner_key
+    from mcp_server_polymarket.signing.perps import approve_builder, signed_request
+
+    builder = call.settings.perps_builder
+    if not builder:
+        raise InvalidRequest("Set POLYMARKET_PERPS_BUILDER to the builder's address first.")
+    if Decimal(max_fee_rate) > Decimal("0.001"):
+        raise InvalidRequest("Builder fees are capped at 0.001.")
+    key, _ = owner_key(call)
+    current = await call.json(ep.PERPS_BUILDER_APPROVALS, params={"builder": builder})
+    rows = current if isinstance(current, list) else (current or {}).get("approvals") or []
+    versions = [int(r.get("approval_version", 0)) for r in rows if isinstance(r, dict)]
+    op = approve_builder(builder, max_fee_rate, max(versions, default=0) + 1)
+    body = signed_request(key, op, salt=secrets.randbits(32), ts_ms=int(time.time() * 1000))
+    data, unknown = await safety.send_write(
+        call,
+        tool="trading:set_perps_builder_approval",
+        endpoint=ep.PERPS_APPROVE_BUILDER,
+        body=body,
+        summary=f"builder {builder} fee {max_fee_rate}",
+        usd=None,
+        print_=None,
+    )
+    return unknown or WriteResult(status="done", raw=perps_slim(data))

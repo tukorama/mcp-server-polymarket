@@ -210,7 +210,9 @@ def main() -> int:
             print("removed endpoint:", *removed)
         return 1 if before != after else 0
     MANIFEST.write_text(text)
-    print(f"{len(manifest['endpoints'])} endpoints, {len(manifest['operations'])} stream operations")
+    print(
+        f"{len(manifest['endpoints'])} endpoints, {len(manifest['operations'])} stream operations"
+    )
     return 0
 
 
