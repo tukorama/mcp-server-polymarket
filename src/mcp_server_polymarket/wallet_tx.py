@@ -8,8 +8,16 @@ from dataclasses import dataclass
 from typing import Any
 
 from mcp_server_polymarket.client import endpoints as ep
-from mcp_server_polymarket.client.base import ApiClient
-from mcp_server_polymarket.errors import ConfigError, InvalidRequest, PolymarketError
+from mcp_server_polymarket.client.base import ApiClient, encode_body
+from mcp_server_polymarket.errors import (
+    ConfigError,
+    DeadlineExceeded,
+    InvalidRequest,
+    NetworkError,
+    NotSent,
+    PolymarketError,
+    ServerError,
+)
 from mcp_server_polymarket.identity import Identity
 
 logger = logging.getLogger(__name__)
@@ -30,6 +38,20 @@ class WalletTx:
     transaction_hash: str | None = None
     error: str | None = None
     raw: Any = None
+    # Set when the submit's outcome is unknown: the journal entry to resend.
+    request_id: str | None = None
+
+
+@dataclass
+class Record:
+    """How a batch is entered in the write journal, so it counts toward the daily limit and an
+    unknown outcome can be resent byte for byte."""
+
+    journal: Any
+    tool: str
+    summary: str
+    usd: Any = None
+    fingerprint: str | None = None
 
 
 def _tx_fields(body: Any) -> WalletTx:
@@ -108,10 +130,13 @@ async def submit(
     metadata: str = "",
     wait_seconds: float = 30,
     deadline: float | None = None,
+    record: Record | None = None,
 ) -> WalletTx:
     """Sign and submit a batch, then follow it until it settles or `wait_seconds` pass.
 
-    One batch at a time per wallet: they share a nonce.
+    One batch at a time per wallet: they share a nonce. With `record`, the batch is journaled
+    before it is sent; if the submit may have arrived without an answer, the result has state
+    "UNKNOWN" and the entry's id, and it is never re-signed.
     """
     from mcp_server_polymarket.signing import relayer
 
@@ -120,23 +145,70 @@ async def submit(
     async with lock:
         signed = await sign_batch(client, identity, calls, deadline=deadline)
         body = relayer.batch_wire(calls=calls, metadata=metadata, **signed)
-        try:
-            response = await client.json(ep.RELAYER_SUBMIT, body=body, deadline=deadline)
-        except PolymarketError as exc:
-            mismatch = _NONCE_MISMATCH.search(exc.message)
+        outcome = await _post(client, body, deadline, record)
+        if isinstance(outcome, PolymarketError):
+            mismatch = _NONCE_MISMATCH.search(outcome.message)
             if not mismatch or int(mismatch.group(1)) >= int(mismatch.group(2)):
-                raise
+                raise outcome
             # The relayer saw a newer nonce; signing again with it cannot double-spend, since
             # the stale batch was rejected and never executes.
             signed = await sign_batch(
                 client, identity, calls, deadline=deadline, nonce=int(mismatch.group(2))
             )
             body = relayer.batch_wire(calls=calls, metadata=metadata, **signed)
-            response = await client.json(ep.RELAYER_SUBMIT, body=body, deadline=deadline)
+            outcome = await _post(client, body, deadline, record)
+            if isinstance(outcome, PolymarketError):
+                raise outcome
+        if isinstance(outcome, WalletTx):
+            return outcome
+        response, entry = outcome
     tx = _tx_fields(response)
     if not tx.transaction_id:
         return tx
-    return await follow(client, tx.transaction_id, wait_seconds=wait_seconds, deadline=deadline)
+    tx = await follow(client, tx.transaction_id, wait_seconds=wait_seconds, deadline=deadline)
+    if record is not None and entry is not None and tx.state in ("STATE_FAILED", "STATE_INVALID"):
+        record.journal.finish(entry, "failed", {"state": tx.state, "error": tx.error})
+    return tx
+
+
+async def _post(
+    client: ApiClient, body: Any, deadline: float | None, record: Record | None
+) -> tuple[Any, str | None] | WalletTx | PolymarketError:
+    """One submit. Returns (response, journal entry), an unknown WalletTx, or the definite
+    error (returned rather than raised so the caller can re-sign on a nonce mismatch)."""
+    raw = encode_body(body)
+    entry = None
+    if record is not None:
+        entry = record.journal.record(
+            tool=record.tool,
+            endpoint=ep.RELAYER_SUBMIT.key,
+            summary=record.summary,
+            usd=record.usd,
+            fingerprint=record.fingerprint,
+            body=raw,
+        )
+    try:
+        response = await client.json(ep.RELAYER_SUBMIT, raw_body=raw, deadline=deadline)
+    except NotSent as exc:
+        if entry is not None:
+            record.journal.finish(entry, "failed", {"error": exc.message})  # type: ignore[union-attr]
+        return exc
+    except (NetworkError, ServerError, DeadlineExceeded) as exc:
+        if entry is None:
+            raise
+        record.journal.finish(entry, "unknown", {"error": exc.message})  # type: ignore[union-attr]
+        return WalletTx(transaction_id=None, state="UNKNOWN", error=exc.message, request_id=entry)
+    except PolymarketError as exc:
+        if entry is not None:
+            record.journal.finish(entry, "failed", {"error": exc.message})  # type: ignore[union-attr]
+        return exc
+    except BaseException as exc:
+        if entry is not None:
+            record.journal.finish(entry, "unknown", {"error": f"interrupted: {type(exc).__name__}"})  # type: ignore[union-attr]
+        raise
+    if entry is not None:
+        record.journal.finish(entry, "sent", response)  # type: ignore[union-attr]
+    return response, entry
 
 
 async def follow(

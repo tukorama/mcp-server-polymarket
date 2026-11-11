@@ -153,10 +153,33 @@ async def create_deposit_addresses(call: Call) -> BridgeAddresses:
     )
 
 
+def _withdrawal_target(call: Call, to_chain_id: str, recipient: str | None) -> str:
+    """Where bridged pUSD goes. Shared by the confirmation and the request.
+
+    The Polymarket wallet is a Polygon contract (unless it is the key itself), so on any other
+    chain the default is the owner's own key address, which exists on every EVM chain.
+    """
+    from mcp_server_polymarket import safety
+
+    identity = call.identity
+    owner = None if identity.is_session_key else identity.signer_address
+    wallet = identity.verified_wallet
+    eoa_wallet = wallet is not None and owner is not None and wallet.lower() == owner.lower()
+    own_here = wallet if to_chain_id == "137" or eoa_wallet else None
+    target = recipient or own_here or owner
+    if not target:
+        raise InvalidRequest(
+            "Give a recipient from POLYMARKET_TRANSFER_ALLOWLIST, or configure the owner's key "
+            "so the server can tell which addresses are yours."
+        )
+    safety.check_recipient(call, target, [own_here, owner])
+    return target
+
+
 async def _describe_withdrawal(
     call: Call, to_chain_id: str, to_token_address: str, recipient: str | None = None
 ) -> str:
-    target = recipient or call.identity.wallet_address
+    target = _withdrawal_target(call, to_chain_id, recipient)
     return (
         f"Create bridge withdrawal addresses that send to {target} on chain {to_chain_id} "
         f"(token {to_token_address})? Any pUSD sent to them later leaves Polymarket."
@@ -180,13 +203,10 @@ async def create_withdrawal_addresses(
 ) -> BridgeAddresses:
     """Addresses that bridge pUSD out of Polymarket to a token on another chain. Funds move only
     when pUSD is sent to them, which this tool does not do."""
-    from mcp_server_polymarket import safety
-
     wallet = call.identity.wallet_address
     if not wallet:
         raise InvalidRequest("No wallet is configured.", hint="Set POLYMARKET_WALLET_ADDRESS.")
-    target = recipient or wallet
-    safety.check_recipient(call, target, [wallet, call.identity.signer_address])
+    target = _withdrawal_target(call, to_chain_id, recipient)
     body = await call.json(
         ep.BRIDGE_WITHDRAW,
         body={

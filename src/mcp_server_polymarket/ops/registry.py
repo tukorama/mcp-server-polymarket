@@ -52,6 +52,8 @@ class Runtime:
     cache: JsonCache
     caps: Capabilities
     _journal: Any = None
+    # (monotonic time, response) of the last geoblock check; see safety.check_geoblock.
+    geoblock: tuple[float, dict[str, Any]] | None = None
 
     @classmethod
     def create(
@@ -207,6 +209,15 @@ def operation(
         return fn
 
     return register
+
+
+def confirmation_gate(op: Operation, runtime: Runtime, kwargs: dict[str, Any]) -> Gate | None:
+    """The gate that decides how a call is confirmed. A resend counts as what it resends."""
+    if op.name == "resend_write":
+        entry = runtime.journal.get(str(kwargs.get("request_id") or ""))
+        if entry is not None and entry.tool.startswith("transfers"):
+            return "transfers"
+    return op.gate
 
 
 def enabled_operations(caps: Capabilities) -> list[Operation]:

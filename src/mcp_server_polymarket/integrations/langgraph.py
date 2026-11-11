@@ -27,6 +27,7 @@ from mcp_server_polymarket.config import Settings
 from mcp_server_polymarket.errors import PolymarketError
 from mcp_server_polymarket.models.base import WriteResult
 from mcp_server_polymarket.ops import OPERATIONS, Call, Operation, Runtime, enabled_operations
+from mcp_server_polymarket.ops.registry import confirmation_gate
 from mcp_server_polymarket.redaction import scrub
 from mcp_server_polymarket.server import detect_capabilities
 
@@ -70,6 +71,12 @@ class _Bridge:
         result = await self._guard(op.fn(self._call_of(), **kwargs))
         return result.model_dump(mode="json") if isinstance(result, BaseModel) else result
 
+    async def needs_asking(self, op: Operation, kwargs: dict[str, Any]) -> bool:
+        if not op.needs_confirmation or kwargs.get("dry_run"):
+            return False
+        gate = confirmation_gate(op, self._call_of().runtime, kwargs)
+        return self.settings.confirm != "none" or gate == "transfers"
+
     async def describe(self, op: Operation, kwargs: dict[str, Any]) -> str:
         assert op.describe is not None
         return scrub(await self._guard(op.describe(self._call_of(), **kwargs)))
@@ -105,12 +112,6 @@ def approved(answer: Any) -> bool:
     return False
 
 
-def _needs_asking(op: Operation, settings: Settings, kwargs: dict[str, Any]) -> bool:
-    if not op.needs_confirmation or kwargs.get("dry_run"):
-        return False
-    return settings.confirm != "none" or op.gate == "transfers"
-
-
 def _declined(op: Operation) -> Any:
     result_type = typing.get_type_hints(op.fn).get("return", WriteResult)
     result = cast(type[WriteResult], result_type)(
@@ -127,14 +128,14 @@ def _build_tool(op: Operation, bridge: _Bridge, prefix: str) -> BaseTool:
     # interrupt() must run in the graph's own context, so the question is asked here and only the
     # API work goes to the bridge loop.
     def run(**kwargs: Any) -> Any:
-        if _needs_asking(op, bridge.settings, kwargs):
+        if bridge.submit(bridge.needs_asking(op, kwargs)).result():
             text = bridge.submit(bridge.describe(op, kwargs)).result()
             if not approved(interrupt(_approval(op, text))):
                 return _declined(op)
         return bridge.submit(bridge.run(op, kwargs)).result()
 
     async def arun(**kwargs: Any) -> Any:
-        if _needs_asking(op, bridge.settings, kwargs):
+        if await asyncio.wrap_future(bridge.submit(bridge.needs_asking(op, kwargs))):
             text = await asyncio.wrap_future(bridge.submit(bridge.describe(op, kwargs)))
             if not approved(interrupt(_approval(op, text))):
                 return _declined(op)

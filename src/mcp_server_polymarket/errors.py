@@ -60,6 +60,10 @@ class NetworkError(PolymarketError):
     """The request never produced a response."""
 
 
+class NotSent(NetworkError):
+    """No attempt of this request can have reached Polymarket, so a write did not happen."""
+
+
 class DeadlineExceeded(PolymarketError):
     """The call ran out of the time the client allows a tool."""
 

@@ -6,6 +6,7 @@ The limits come from the real environment only (never .env). `0` blocks a kind o
 
 import hashlib
 import time
+from collections.abc import Callable
 from decimal import Decimal
 from typing import Any
 
@@ -15,6 +16,7 @@ from mcp_server_polymarket.config import Limit
 from mcp_server_polymarket.errors import (
     DeadlineExceeded,
     NetworkError,
+    NotSent,
     PolymarketError,
     Refused,
     ServerError,
@@ -23,7 +25,6 @@ from mcp_server_polymarket.models.base import WriteResult
 from mcp_server_polymarket.ops.registry import Call
 
 GEOBLOCK_TTL = 300
-_geoblock_cache: dict[int, tuple[float, dict[str, Any]]] = {}
 
 
 def check_limit(limit: Limit, amount: Decimal, what: str, setting: str) -> None:
@@ -88,8 +89,8 @@ def check_recipient(call: Call, recipient: str, own: list[str | None]) -> None:
 
 async def check_geoblock(call: Call) -> None:
     """Order placement from restricted regions is refused here first, and fails closed."""
-    key = id(call.runtime)
-    cached = _geoblock_cache.get(key)
+    # Kept on the runtime itself: an id() key could be reused by a later runtime.
+    cached = call.runtime.geoblock
     if cached and time.monotonic() - cached[0] < GEOBLOCK_TTL:
         body = cached[1]
     else:
@@ -101,7 +102,7 @@ async def check_geoblock(call: Call) -> None:
                 hint="Check get_service_status and retry.",
             ) from exc
         body = body if isinstance(body, dict) else {}
-        _geoblock_cache[key] = (time.monotonic(), body)
+        call.runtime.geoblock = (time.monotonic(), body)
     if body.get("blocked") is not False:
         where = "-".join(str(p) for p in (body.get("country"), body.get("region")) if p)
         raise Refused(
@@ -124,6 +125,16 @@ def block_duplicate(call: Call, print_: str) -> None:
         )
 
 
+def unknown_result(entry: str, reason: str) -> WriteResult:
+    return WriteResult(
+        status="unknown",
+        request_id=entry,
+        message=f"The outcome is unknown: {reason}",
+        next_step="Do not place it again. Check list_my_open_orders or the account, then "
+        f"resend_write(request_id='{entry}') to send the identical request if it is missing.",
+    )
+
+
 async def send_write(
     call: Call,
     *,
@@ -134,11 +145,13 @@ async def send_write(
     usd: Decimal | None,
     print_: str | None,
     headers: dict[str, str] | None = None,
+    rejected: Callable[[Any], bool] | None = None,
 ) -> tuple[Any, WriteResult | None]:
     """Journal, then send. Returns (response, None), or (None, result) when the outcome is unknown.
 
     Definite rejections raise. A request that may have reached Polymarket is never repeated
-    here; its bytes stay in the journal for resend_write.
+    here; its bytes stay in the journal for resend_write. `rejected` recognises a refusal that
+    arrives as a 200 response, so it does not count toward the daily limit.
     """
     journal = call.runtime.journal
     raw = encode_body(body) if body is not None else None
@@ -147,18 +160,19 @@ async def send_write(
     )
     try:
         response = await call.request(endpoint, raw_body=raw, headers=headers)
+    except NotSent as exc:
+        journal.finish(entry, "failed", {"error": exc.message})
+        raise
     except (NetworkError, ServerError, DeadlineExceeded) as exc:
         journal.finish(entry, "unknown", {"error": exc.message})
-        return None, WriteResult(
-            status="unknown",
-            request_id=entry,
-            message=f"The outcome is unknown: {exc.message}",
-            next_step="Do not place it again. Check list_my_open_orders or the account, then "
-            f"resend_write(request_id='{entry}') to send the identical request if it is missing.",
-        )
+        return None, unknown_result(entry, exc.message)
     except PolymarketError as exc:
         journal.finish(entry, "failed", {"error": exc.message})
         raise
+    except BaseException as exc:
+        # Cancelled or crashed mid-send: the request may have gone out, so treat it as unknown.
+        journal.finish(entry, "unknown", {"error": f"interrupted: {type(exc).__name__}"})
+        raise
     data = parse_json(response)
-    journal.finish(entry, "sent", data)
+    journal.finish(entry, "rejected" if rejected is not None and rejected(data) else "sent", data)
     return data, None

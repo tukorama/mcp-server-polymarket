@@ -93,11 +93,15 @@ class Journal:
         return [Entry(*row) for row in rows]
 
     def pending_duplicate(self, fingerprint: str) -> Entry | None:
-        """An identical write whose outcome is still unknown."""
+        """An identical write whose outcome is unknown and can still be resent.
+
+        Once its body expires a resend is impossible, so the block lifts; the daily limit still
+        counts it.
+        """
         self._expire()
         row = self.db.execute(
             "SELECT * FROM writes WHERE fingerprint = ? AND status = 'unknown' "
-            "ORDER BY created DESC LIMIT 1",
+            "AND body IS NOT NULL ORDER BY created DESC LIMIT 1",
             (fingerprint,),
         ).fetchone()
         return Entry(*row) if row else None

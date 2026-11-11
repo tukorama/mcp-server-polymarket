@@ -17,6 +17,7 @@ from mcp_server_polymarket.models.base import CompactModel, WriteResult, json_li
 from mcp_server_polymarket.models.clob import OrderBook
 from mcp_server_polymarket.ops.registry import Call, TokenId, When, operation
 from mcp_server_polymarket.protocol import is_v2_token
+from mcp_server_polymarket.redaction import clean_label
 
 TOOLSET = "trading"
 TRADER = ("clob_l2", "signer")
@@ -24,7 +25,10 @@ Side = Literal["BUY", "SELL"]
 MIN_GTD_SECONDS = 180
 MAX_BATCH = 15
 Price = Annotated[Decimal, Field(gt=0, lt=1, description="Price per share in pUSD, e.g. 0.45.")]
-Shares = Annotated[Decimal, Field(gt=0, description="Number of shares (outcome tokens).")]
+Shares = Annotated[
+    Decimal,
+    Field(gt=0, decimal_places=2, description="Number of shares (outcome tokens), 2 decimals."),
+]
 DryRun = Annotated[bool, Field(description="Check and price the order without sending it.")]
 
 
@@ -88,7 +92,7 @@ async def market_label(call: Call, token_id: str) -> tuple[str | None, str | Non
     for index, token in enumerate(tokens):
         if str(token) == token_id and names:
             outcome = str(names[index % len(names)])
-    label = (market.get("question"), outcome)
+    label = (clean_label(market.get("question")), clean_label(outcome))
     cache.set(f"label:{token_id}", list(label), disk=False)
     return label
 
@@ -279,12 +283,18 @@ def outcome_of(data: Any) -> OrderResult:
     )
 
 
+def _rejected(data: Any) -> bool:
+    return outcome_of(data).status == "rejected"
+
+
 async def _before_send(call: Call, usd: Decimal, print_: str) -> None:
     settings = call.settings
+    # The geoblock check awaits, so it runs first: nothing may await between the daily-limit
+    # check and the journal entry, or two concurrent orders could both pass the limit.
+    await safety.check_geoblock(call)
     safety.check_limit(settings.max_order_usd, usd, "An order", "POLYMARKET_MAX_ORDER_USD")
     safety.check_daily(call, usd, "trading")
     safety.block_duplicate(call, print_)
-    await safety.check_geoblock(call)
 
 
 # Descriptions shown to the user for confirmation. Deterministic: arguments and cached labels.
@@ -392,6 +402,7 @@ async def place_limit_order(
         summary=f"{side} {size} @ {price} of {token_id}",
         usd=draft.usd,
         print_=print_,
+        rejected=_rejected,
     )
     if unknown:
         return OrderResult(**unknown.model_dump(), preview=draft.preview)
@@ -489,6 +500,7 @@ async def place_market_order(
         summary=f"market {side} {amount} bound {price_bound} of {token_id}",
         usd=usd,
         print_=print_,
+        rejected=_rejected,
     )
     if unknown:
         return OrderResult(**unknown.model_dump(), preview=preview)
@@ -555,6 +567,7 @@ async def place_orders(
         summary=f"{len(body)} limit orders",
         usd=total,
         print_=print_,
+        rejected=lambda d: all(_rejected(row) for row in (d if isinstance(d, list) else [d])),
     )
     if unknown:
         return OrdersResult(**unknown.model_dump(), orders=previews)
@@ -711,15 +724,41 @@ async def resend_write(call: Call, request_id: str) -> WriteResult:
     endpoint = next((e for e in ep.ALL if e.key == entry.endpoint), None)
     if endpoint is None:
         raise Refused(f"Write {request_id} targets an endpoint this version does not know.")
+    if not entry.tool.startswith("trading:mark"):
+        await safety.check_geoblock(call)
     journal = call.runtime.journal
     try:
         response = await call.request(endpoint, raw_body=entry.body)
-    except Exception as exc:
-        raise Refused(
-            f"Resending failed: {exc}", hint="Check the account before trying again."
-        ) from exc
+    except BaseException as exc:
+        # The entry stays unknown: this attempt may have arrived as well.
+        if isinstance(exc, Exception):
+            raise Refused(
+                f"Resending failed: {exc}", hint="Check the account before trying again."
+            ) from exc
+        raise
     from mcp_server_polymarket.client.base import parse_json
 
     data = parse_json(response)
+    verdict = _resend_verdict(entry.tool, data)
+    if verdict is not None:
+        journal.finish(request_id, "rejected", data)
+        return WriteResult(
+            status="rejected",
+            request_id=request_id,
+            message=verdict,
+            next_step="Check the account: a rejected duplicate can mean the first one arrived.",
+            raw=data,
+        )
     journal.finish(request_id, "sent", data)
     return WriteResult(status="sent", request_id=request_id, raw=data)
+
+
+def _resend_verdict(tool: str, data: Any) -> str | None:
+    """Polymarket's refusal of a resent request, when it comes back as a 200 response."""
+    if tool.startswith(("perps", "transfers:withdraw", "transfers:transfer")):
+        from mcp_server_polymarket.ops.perps_trading import _outcome
+
+        result = _outcome(data)
+    else:
+        result = outcome_of(data)
+    return (result.message or "rejected") if result.status == "rejected" else None

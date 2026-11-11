@@ -117,8 +117,9 @@ async def test_merge_all_pairs_on_a_v2_market(owner, api):
     )
     async with session(owner, api, elicitation_callback=accept) as client:
         await call(client, "merge_positions", condition_id=V2_CONDITION)
-    approval, merge = calls_of(api)
+    approval, merge, revoke = calls_of(api)
     assert approval == relayer.erc1155_set_approval_for_all(w.POSITION_MANAGER, w.ROUTER_V2)
+    assert revoke == relayer.erc1155_set_approval_for_all(w.POSITION_MANAGER, w.ROUTER_V2, False)
     assert merge == relayer.router_merge(w.ROUTER_V2, V2_CONDITION, 3_500_000)
     assert api.query(ep.DATA_POSITIONS)["status"] == "MERGEABLE"
 

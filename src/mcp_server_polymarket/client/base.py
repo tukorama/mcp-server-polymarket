@@ -24,6 +24,7 @@ from mcp_server_polymarket.errors import (
     InvalidRequest,
     NetworkError,
     NotFound,
+    NotSent,
     PermissionDenied,
     PolymarketError,
     RateLimited,
@@ -196,10 +197,17 @@ class ApiClient:
         query = _query(params)
         rate_limited = server_failures = network_failures = 0
         label = f"{endpoint.method} {endpoint.service.name.lower()}{endpoint.path}"
+        # Whether some attempt may have reached Polymarket. A write that never did, did not happen.
+        maybe_sent = False
 
         async def pause(seconds: float) -> None:
             # A retry must not outlive the caller's time allowance, or the client cancels the call.
             if deadline is not None and _monotonic() + seconds > deadline:
+                if not maybe_sent:
+                    raise NotSent(
+                        f"{label} was not sent in the time this tool call allows.",
+                        hint="Nothing was sent. Try again in a moment.",
+                    )
                 raise DeadlineExceeded(
                     f"{label} did not answer in the time this tool call allows.",
                     hint="Try again in a moment.",
@@ -215,6 +223,8 @@ class ApiClient:
             if deadline is not None:
                 remaining = deadline - _monotonic()
                 if remaining <= 0:
+                    if not maybe_sent:
+                        raise NotSent(f"No time left to send {label}.", hint="Try again.")
                     raise DeadlineExceeded(f"No time left for {label}.", hint="Try again.")
                 timeout = max(min(timeout, remaining), 0.5)
             try:
@@ -228,6 +238,7 @@ class ApiClient:
                 )
             except (httpx2.TransportError, httpx2.DecodingError) as exc:
                 reached = not isinstance(exc, httpx2.ConnectError | httpx2.ConnectTimeout)
+                maybe_sent = maybe_sent or reached
                 network_failures += 1
                 if network_failures >= policy.network_attempts or (
                     reached and not policy.retry_ambiguous_timeouts
@@ -238,7 +249,7 @@ class ApiClient:
                             f"({type(exc).__name__}).",
                             hint="The outcome is unknown. Check before repeating this write.",
                         ) from exc
-                    raise NetworkError(
+                    raise (NetworkError if maybe_sent else NotSent)(
                         f"Could not reach {endpoint.service.name.lower()} for {label} "
                         f"({type(exc).__name__}).",
                         hint="The host may be unreachable from this network. Retry later.",
@@ -246,6 +257,7 @@ class ApiClient:
                 await pause(backoff(network_failures))
                 continue
 
+            maybe_sent = True
             status = response.status_code
             retry_after = parse_retry_after(response)
             if status in (425, 429):

@@ -161,6 +161,22 @@ class Identity:
         return int(kind)
 
     @property
+    def verified_wallet(self) -> str | None:
+        """POLYMARKET_WALLET_ADDRESS, only if this signing key provably created it.
+
+        The setting alone may come from a .env file in a project directory, so funds are only
+        sent to it by default when the address is derived from the owner's key.
+        """
+        signer, wallet = self.signer_address, self.wallet_address
+        if signer is None or wallet is None or self.is_session_key:
+            return None
+        try:
+            from mcp_server_polymarket.signing.wallets import classify_wallet
+        except ImportError:
+            return None
+        return wallet if classify_wallet(signer, wallet) is not None else None
+
+    @property
     def signature_type(self) -> int | None:
         """The wallet's signature type, as account reads and orders need it."""
         try:

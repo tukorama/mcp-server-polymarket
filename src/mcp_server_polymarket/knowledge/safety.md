@@ -36,8 +36,15 @@ the question for trading, never for transfers. `dry_run=true` previews without a
 
 ## Recipients
 
-Withdrawals go to the user's own wallet. Any other recipient must be listed in
-`POLYMARKET_TRANSFER_ALLOWLIST`. Tools never take contract addresses or calldata from the agent.
+Withdrawals go to the user's own addresses: the Polymarket wallet, but only when it is provably
+derived from the owner's key (a wallet address alone could come from a stray `.env` file), or
+the owner's key address. Off Polygon, where the contract wallet does not exist, bridge
+withdrawals default to the owner's key address. Any other recipient must be listed in
+`POLYMARKET_TRANSFER_ALLOWLIST` (comma-separated). Tools never take contract addresses or
+calldata from the agent.
+
+Merges and redeems approve the contract they call and withdraw that approval in the same
+transaction, so nothing stays approved afterwards.
 
 ## Location
 

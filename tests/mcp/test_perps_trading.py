@@ -103,7 +103,7 @@ async def test_bracket_order_is_signed_by_the_trading_key(trader, api):
         "tr": {"tpsl": "tp", "trp": "7800", "market": True},
     }
     assert recover(body) == PROXY
-    assert "take profit at 7800" in ASKED[0]
+    assert "take profit triggered at 7800, then market (reduce-only)" in ASKED[0]
 
 
 async def test_order_checks(trader, api):
@@ -167,6 +167,21 @@ async def test_cancels_margin_auto_cancel(trader, api, clock):
     api.add(ep.PERPS_AUTO_CANCEL, {"status": "ok", "deadline": 1})
     api.add(ep.PERPS_MODIFY_ORDERS, [{"status": "ok"}])
     api.add(ep.PERPS_MODIFY_ORDERS_COID, [{"status": "ok"}])
+    api.add(
+        ep.PERPS_OPEN_ORDERS,
+        [
+            {"order_id": 5, "instrument_id": 1, "buy": True, "price": "7590", "quantity": "0.01"},
+            {
+                "order_id": 6,
+                "client_order_id": "b" * 32,
+                "instrument_id": 1,
+                "buy": False,
+                "price": "7610",
+                "quantity": "0.01",
+                "ro": True,
+            },
+        ],
+    )
     async with session(trader, api, elicitation_callback=accept) as client:
         await call(client, "cancel_perps_orders", order_ids=[5, 6])
         assert api.body(ep.PERPS_CANCEL_ORDERS)["op"] == {"type": "cancelOrders", "args": [5, 6]}
@@ -178,13 +193,18 @@ async def test_cancels_margin_auto_cancel(trader, api, clock):
         await call(client, "set_perps_auto_cancel")
         assert api.body(ep.PERPS_AUTO_CANCEL)["op"]["args"] == {"time": 0}
         await call(
-            client, "modify_perps_orders", changes=[{"order_id": 5, "price": "1", "quantity": "2"}]
+            client,
+            "modify_perps_orders",
+            changes=[{"order_id": 5, "price": "7595", "quantity": "0.02"}],
         )
-        assert api.body(ep.PERPS_MODIFY_ORDERS)["op"]["args"] == [{"oid": 5, "p": "1", "qty": "2"}]
+        assert api.body(ep.PERPS_MODIFY_ORDERS)["op"]["args"] == [
+            {"oid": 5, "p": "7595", "qty": "0.02"}
+        ]
+        # The resting order is reduce-only, so a large quantity is not counted as exposure.
         await call(
             client,
             "modify_perps_orders",
-            changes=[{"client_order_id": "b" * 32, "price": "1", "quantity": "2"}],
+            changes=[{"client_order_id": "b" * 32, "price": "7600", "quantity": "2"}],
         )
 
 

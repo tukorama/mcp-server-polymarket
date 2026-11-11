@@ -128,6 +128,10 @@ async def test_bridge_withdrawal_addresses_respect_the_allowlist(everything, api
             client, "create_withdrawal_addresses", to_chain_id="8453", to_token_address=token
         )
     assert data["addresses"] == {"evm": "0xbridge"}
+    # The Deposit Wallet is a Polygon contract: off Polygon the default is the owner's own key.
+    assert api.body(ep.BRIDGE_WITHDRAW)["recipientAddr"] == OWNER
+    async with session(everything, api, elicitation_callback=accept) as client:
+        await call(client, "create_withdrawal_addresses", to_chain_id="137", to_token_address=token)
     assert api.body(ep.BRIDGE_WITHDRAW)["recipientAddr"] == everything.wallet_address
 
 

@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from mcp_server_polymarket import safety, wallet_tx
 from mcp_server_polymarket.client import endpoints as ep
 from mcp_server_polymarket.client.paging import epoch_ms
-from mcp_server_polymarket.errors import ConfigError, InvalidRequest, Refused
+from mcp_server_polymarket.errors import ConfigError, InvalidRequest, NotFound, Refused
 from mcp_server_polymarket.models.base import WriteResult
 from mcp_server_polymarket.ops.perps_market import instrument, perps_slim
 from mcp_server_polymarket.ops.registry import Call, InstrumentId, When, operation
@@ -170,8 +170,14 @@ async def _rows(call: Call, specs: list[PerpsOrderSpec]) -> tuple[list[Any], Dec
             safety.check_deviation(
                 price, mark, side, "Price", relative=True, limit=settings.max_price_deviation
             )
-        reference = price if price is not None and mark is None else max(price or 0, mark or 0)
-        notional = quantity * Decimal(reference or 0)
+        reference = max(price or 0, mark or 0)
+        if not reference and not spec.reduce_only:
+            raise Refused(
+                f"No mark price for {info.get('symbol')}, so this order's value cannot be checked "
+                "against the limits.",
+                hint="Give a limit price.",
+            )
+        notional = quantity * Decimal(reference)
         minimum = _decimal(info.get("min_notional"), "min_notional")
         if minimum is not None and notional and notional < minimum and not spec.reduce_only:
             raise InvalidRequest(f"Order value ${notional:.2f} is below the ${minimum} minimum.")
@@ -193,10 +199,23 @@ async def _rows(call: Call, specs: list[PerpsOrderSpec]) -> tuple[list[Any], Dec
             )
         )
         at = f"at {spec.price}" if spec.price else "at market"
-        lines.append(f"{side} {spec.quantity} {info.get('symbol')} {at} ({spec.time_in_force})")
+        flags = [
+            n for n, on in (("reduce-only", spec.reduce_only), ("post-only", spec.post_only)) if on
+        ]
+        extra = "".join(f", {flag}" for flag in flags)
+        lines.append(
+            f"{side} {spec.quantity} {info.get('symbol')} {at} ({spec.time_in_force}{extra})"
+        )
         for kind, trigger in (("tp", spec.take_profit), ("sl", spec.stop_loss)):
             if trigger is None:
                 continue
+            for value, what in (
+                (trigger.trigger_price, "trigger price"),
+                (trigger.limit_price, "limit price"),
+            ):
+                number = _decimal(value, what)
+                if number is not None:
+                    _check_number(number, info.get("price_decimals"), what)
             rows.append(
                 perps.order_row(
                     perps.PerpsOrder(
@@ -210,7 +229,8 @@ async def _rows(call: Call, specs: list[PerpsOrderSpec]) -> tuple[list[Any], Dec
                 )
             )
             name = "take profit" if kind == "tp" else "stop loss"
-            lines.append(f"  {name} at {trigger.trigger_price}")
+            then = f", then limit {trigger.limit_price}" if trigger.limit_price else ", then market"
+            lines.append(f"  {name} triggered at {trigger.trigger_price}{then} (reduce-only)")
     return rows, total, lines
 
 
@@ -256,13 +276,13 @@ async def place_perps_orders(
             preview={"orders": lines, "exposure_usd": f"{total:.2f}"},
         )
     settings = call.settings
+    await safety.check_geoblock(call)  # first: nothing may await between check_daily and send
     safety.check_limit(
         settings.max_perps_order_usd, total, "This order", "POLYMARKET_MAX_PERPS_ORDER_USD"
     )
     safety.check_daily(call, total, "perps")
     print_ = safety.fingerprint("perps-orders", [o.model_dump() for o in orders])
     safety.block_duplicate(call, print_)
-    await safety.check_geoblock(call)
     op = perps.create_orders(rows, "order" if brackets else None)
     data, unknown = await send_op(
         call,
@@ -284,13 +304,57 @@ class Modification(BaseModel):
     quantity: Annotated[Amount, Field(description="The new total quantity.")]
 
 
+async def _modified(call: Call, changes: list[Modification]) -> tuple[Decimal, list[str]]:
+    """Check each change like a new order, against the resting order it changes.
+
+    Returns the exposure the changed orders add up to, and a line per change.
+    """
+    body = await call.json(ep.PERPS_OPEN_ORDERS)
+    if isinstance(body, dict):
+        body = next((v for v in body.values() if isinstance(v, list)), [])
+    resting = [o for o in body or [] if isinstance(o, dict)]
+    settings = call.settings
+    total = Decimal(0)
+    lines = []
+    for change in changes:
+        order = next(
+            (
+                o
+                for o in resting
+                if (change.order_id is not None and o.get("order_id") == change.order_id)
+                or (change.client_order_id and o.get("client_order_id") == change.client_order_id)
+            ),
+            None,
+        )
+        name = change.order_id or change.client_order_id
+        if order is None or not isinstance(order.get("instrument_id"), int):
+            raise NotFound(f"Order {name} is not among your open Perps orders.")
+        info = await instrument(call, order["instrument_id"])
+        price, quantity = _decimal(change.price, "price"), _decimal(change.quantity, "quantity")
+        assert price is not None and quantity is not None
+        _check_number(price, info.get("price_decimals"), "price")
+        _check_number(quantity, info.get("quantity_decimals"), "quantity")
+        side = "BUY" if order.get("buy") else "SELL"
+        mark = await mark_of(call, order["instrument_id"])
+        safety.check_deviation(
+            price, mark, side, "Price", relative=True, limit=settings.max_price_deviation
+        )
+        if not order.get("ro"):
+            total += quantity * max(price, mark or Decimal(0))
+        lines.append(
+            f"order {name} ({side} {info.get('symbol')}): price {order.get('price')} -> {price}, "
+            f"quantity {order.get('quantity')} -> {quantity}"
+        )
+    return total, lines
+
+
 async def _describe_modify(call: Call, changes: list[Any], dry_run: bool = False) -> str:
     items = [c if isinstance(c, Modification) else Modification.model_validate(c) for c in changes]
-    lines = [
-        f"order {c.order_id or c.client_order_id}: price {c.price}, quantity {c.quantity}"
-        for c in items
-    ]
-    return "Change these Perps orders?\n- " + "\n- ".join(lines)
+    total, lines = await _modified(call, items)
+    return (
+        f"Change these Perps orders (about ${total:.2f} of exposure afterwards)?\n- "
+        + "\n- ".join(lines)
+    )
 
 
 @operation(
@@ -320,17 +384,30 @@ async def modify_perps_orders(
     else:
         op = perps.modify_orders_coid([(c.client_order_id, c.price, c.quantity) for c in by_coid])  # type: ignore[misc]
         endpoint = ep.PERPS_MODIFY_ORDERS_COID
+    total, lines = await _modified(call, changes)
     if dry_run:
-        return PerpsResult(status="preview", dry_run=True, preview={"op": perps.body_op(op)})
+        return PerpsResult(
+            status="preview",
+            dry_run=True,
+            preview={"changes": lines, "exposure_usd": f"{total:.2f}", "op": perps.body_op(op)},
+        )
+    settings = call.settings
+    await safety.check_geoblock(call)
+    safety.check_limit(
+        settings.max_perps_order_usd, total, "This change", "POLYMARKET_MAX_PERPS_ORDER_USD"
+    )
+    safety.check_daily(call, total, "perps")
+    print_ = safety.fingerprint("perps-modify", [c.model_dump() for c in changes])
+    safety.block_duplicate(call, print_)
     data, unknown = await send_op(
         call,
         tool="perps:modify_perps_orders",
         endpoint=endpoint,
         op=op,
         key=proxy_key(call),
-        summary=f"modify {len(changes)} orders",
-        usd=None,
-        print_=None,
+        summary="; ".join(lines),
+        usd=total,
+        print_=print_,
     )
     return PerpsResult(**unknown.model_dump()) if unknown else _outcome(data)
 
@@ -641,6 +718,8 @@ async def deposit_to_perps(
         call.settings.max_transfer_usd, amount, "A deposit", "POLYMARKET_MAX_TRANSFER_USD"
     )
     safety.check_daily(call, amount, "transfers")
+    print_ = safety.fingerprint("perps-deposit", str(amount), owner)
+    safety.block_duplicate(call, print_)
     tx = await wallet_tx.submit(
         call.client,
         call.identity,
@@ -648,7 +727,18 @@ async def deposit_to_perps(
         metadata="Perps deposit",
         wait_seconds=call.limit_wait(30),
         deadline=call.deadline,
+        record=wallet_tx.Record(
+            journal=call.runtime.journal,
+            tool="transfers:deposit_to_perps",
+            summary=f"deposit {amount} pUSD to the Perps account of {owner}",
+            usd=amount,
+            fingerprint=print_,
+        ),
     )
+    if tx.state == "UNKNOWN":
+        return PerpsResult(
+            **safety.unknown_result(tx.request_id or "", tx.error or "no answer").model_dump()
+        )
     status = (
         "confirmed"
         if tx.state == "STATE_CONFIRMED"
@@ -666,10 +756,20 @@ async def deposit_to_perps(
     )
 
 
+def _withdraw_recipient(call: Call, to: str | None) -> tuple[str, list[str | None]]:
+    """(recipient, the user's own addresses). Shared by the confirmation and the signed body."""
+    owner = call.identity.signer_address
+    wallet = call.identity.verified_wallet
+    recipient = to or wallet or owner
+    if not recipient:
+        raise ConfigError("Withdrawals need the owner's key.", hint="Set POLYMARKET_PRIVATE_KEY.")
+    return recipient, [wallet, owner]
+
+
 async def _describe_withdraw(
     call: Call, amount: Decimal, to: str | None = None, dry_run: bool = False
 ) -> str:
-    recipient = to or call.identity.wallet_address
+    recipient, _ = _withdraw_recipient(call, to)
     return f"Withdraw {amount} pUSD from the Perps account to {recipient}? This sends funds out."
 
 
@@ -697,8 +797,8 @@ async def withdraw_from_perps(
     from mcp_server_polymarket.signing.wallets import PUSD
 
     key, owner = owner_key(call)
-    recipient = to or call.identity.wallet_address or owner
-    safety.check_recipient(call, recipient, [call.identity.wallet_address, owner])
+    recipient, own = _withdraw_recipient(call, to)
+    safety.check_recipient(call, recipient, own)
     units = _units(amount)
     if dry_run:
         return PerpsResult(
@@ -707,7 +807,9 @@ async def withdraw_from_perps(
     safety.check_limit(
         call.settings.max_transfer_usd, amount, "A withdrawal", "POLYMARKET_MAX_TRANSFER_USD"
     )
+    print_ = safety.fingerprint("withdraw", str(amount), recipient)
     safety.check_daily(call, amount, "transfers")
+    safety.block_duplicate(call, print_)
     salt, ts = secrets.randbits(32), int(time.time())
     signature = eip712.sign(key, withdraw_typed_data(owner, PUSD, units, recipient, salt, ts))
     body = {
@@ -726,7 +828,7 @@ async def withdraw_from_perps(
         body=body,
         summary=f"withdraw {amount} pUSD to {recipient}",
         usd=amount,
-        print_=safety.fingerprint("withdraw", str(amount), recipient),
+        print_=print_,
     )
     return PerpsResult(**unknown.model_dump()) if unknown else _outcome(data)
 

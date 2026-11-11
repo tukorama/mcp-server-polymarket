@@ -1,15 +1,18 @@
 import os
+import re
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from urllib.parse import urlsplit
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic.fields import FieldInfo
-from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, PydanticBaseSettingsSource, SettingsConfigDict
 
 from mcp_server_polymarket.errors import ConfigError
 from mcp_server_polymarket.redaction import register_secret
+
+ADDRESS = re.compile(r"0x[0-9a-f]{40}")
 
 APP_DIR = "mcp-server-polymarket"
 
@@ -149,7 +152,8 @@ class Settings(BaseSettings):
     max_perps_leverage: Limit = Decimal(5)
     max_transfer_usd: Limit = Decimal(100)
     max_price_deviation: Limit = Decimal("0.10")
-    transfer_allowlist: list[str] = []
+    # Comma-separated in the environment; NoDecode keeps pydantic-settings from reading JSON.
+    transfer_allowlist: Annotated[list[str], NoDecode] = []
 
     toolsets: str = "auto"
 
@@ -214,9 +218,12 @@ class Settings(BaseSettings):
     @field_validator("transfer_allowlist", mode="before")
     @classmethod
     def _split_allowlist(cls, value: Any) -> Any:
-        if isinstance(value, str):
-            return [part.strip().lower() for part in value.split(",") if part.strip()]
-        return [str(part).lower() for part in value]
+        parts = value.split(",") if isinstance(value, str) else value
+        cleaned = [str(part).strip().lower() for part in parts if str(part).strip()]
+        for address in cleaned:
+            if not ADDRESS.fullmatch(address):
+                raise ValueError(f"POLYMARKET_TRANSFER_ALLOWLIST has an invalid address: {address}")
+        return cleaned
 
     @field_validator(*SERVICE_URLS, mode="after")
     @classmethod

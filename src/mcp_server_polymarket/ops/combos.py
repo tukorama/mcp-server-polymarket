@@ -172,10 +172,11 @@ async def trade_combo(
     if dry_run:
         return ComboTrade(status="preview", dry_run=True, message=f"{direction} {amount}")
     settings = call.settings
-    if direction == "BUY":
-        safety.check_limit(settings.max_order_usd, amount, "A Combo", "POLYMARKET_MAX_ORDER_USD")
-        safety.check_daily(call, amount, "trading")
     await safety.check_geoblock(call)
+    # BUY spends at most `amount`; SELL is valued at the worst accepted price per share.
+    usd = amount if direction == "BUY" else amount * worst_price
+    safety.check_limit(settings.max_order_usd, usd, "A Combo", "POLYMARKET_MAX_ORDER_USD")
+    safety.check_daily(call, usd, "trading")
     signer = signer_of(call)
     if signer.session_key:
         raise Refused("Combos are not supported for session keys yet; use the owner's key.")
@@ -197,7 +198,7 @@ async def trade_combo(
         endpoint=ep.COMBO_REQUEST_CREATE,
         body=request,
         summary=f"combo {direction} {amount} over {len(legs)} legs",
-        usd=amount if direction == "BUY" else None,
+        usd=usd,
         print_=safety.fingerprint("combo", legs, direction, str(amount)),
     )
     if unknown:
@@ -220,6 +221,21 @@ async def trade_combo(
             message=f"The quote price {price} is outside {worst_price}; it was not accepted.",
         )
     position = (created.get("request") or {}).get("yes_position_id")
+    problem = _quote_problem(direction, amount, worst_price, quote, position)
+    if problem is None and direction == "SELL":
+        try:
+            safety.check_limit(
+                settings.max_order_usd, amount * price, "A Combo", "POLYMARKET_MAX_ORDER_USD"
+            )
+        except Refused as exc:
+            problem = exc.message
+    if problem is not None:
+        return ComboTrade(
+            status="declined",
+            request_id=request_id,
+            quote=quote,
+            message=f"{problem} The quote was not accepted.",
+        )
     signed = _acceptance_order(signer, direction, str(position), quote)
     accepted = await call.json(
         ep.COMBO_REQUEST_ACCEPT,
@@ -235,6 +251,35 @@ async def trade_combo(
         message=str(accepted.get("error")) if accepted.get("error") else None,
         next_step="Follow it with get_combo_request until FILLED or CONFIRMED.",
     )
+
+
+def _quote_problem(
+    direction: str, amount: Decimal, worst_price: Decimal, quote: dict[str, Any], position: Any
+) -> str | None:
+    """Why the amounts that would be signed do not match what the user confirmed, if they don't.
+
+    The signed order uses the quote's own amounts, so they are checked here and not only its
+    advertised price: BUY pays at most `amount` at no more than worst_price per share, SELL gives
+    at most `amount` shares for no less than worst_price each.
+    """
+    try:
+        maker = int(quote.get("maker_amount_e6") or 0)
+        taker = int(quote.get("taker_amount_e6") or 0)
+    except (TypeError, ValueError):
+        return "The quote's amounts are not numbers."
+    if maker <= 0 or taker <= 0:
+        return "The quote has no amounts."
+    if not position or not str(position).isdigit():
+        return "The quote does not name the Combo position."
+    limit = int(_e6(amount))
+    if maker > limit:
+        what = "pUSD" if direction == "BUY" else "shares"
+        return f"The quote would take {maker / 1e6} {what}, more than the {amount} confirmed."
+    if direction == "BUY" and Decimal(maker) > worst_price * taker:
+        return f"The quote's real price {Decimal(maker) / taker:.6f} is above {worst_price}."
+    if direction == "SELL" and Decimal(taker) < worst_price * maker:
+        return f"The quote's real price {Decimal(taker) / maker:.6f} is below {worst_price}."
+    return None
 
 
 def _acceptance_order(

@@ -15,6 +15,7 @@ from mcp_server_polymarket.client import endpoints as ep
 from mcp_server_polymarket.errors import InvalidRequest, NotFound, Refused
 from mcp_server_polymarket.models.base import WriteResult, json_list
 from mcp_server_polymarket.ops.registry import Call, ConditionId, operation
+from mcp_server_polymarket.redaction import clean_label
 
 TOOLSET = "wallet"
 OWNER = ("owner_signer", "relayer_key")
@@ -58,7 +59,7 @@ async def market_context(call: Call, condition_id: str) -> MarketContext:
     tokens = json_list(market.get("positionIds")) if v2 else json_list(market.get("clobTokenIds"))
     return MarketContext(
         condition_id=condition_id,
-        question=market.get("question"),
+        question=clean_label(market.get("question")),
         v2=v2,
         neg_risk=bool(market.get("negRisk")),
         tokens=[str(t) for t in tokens],
@@ -86,10 +87,13 @@ def _units(amount: Decimal) -> int:
 async def _send(call: Call, plan: Plan, tool: str, dry_run: bool) -> WalletResult:
     if dry_run:
         return WalletResult(status="preview", dry_run=True, calls=plan.lines)
+    print_ = safety.fingerprint(tool, [(c.target, c.data) for c in plan.calls])
     if plan.usd is not None:
         safety.check_limit(
             call.settings.max_order_usd, plan.usd, "This transaction", "POLYMARKET_MAX_ORDER_USD"
         )
+        safety.check_daily(call, plan.usd, "trading")
+    safety.block_duplicate(call, print_)
     tx = await wallet_tx.submit(
         call.client,
         call.identity,
@@ -97,7 +101,19 @@ async def _send(call: Call, plan: Plan, tool: str, dry_run: bool) -> WalletResul
         metadata=plan.metadata,
         wait_seconds=call.limit_wait(30),
         deadline=call.deadline,
+        record=wallet_tx.Record(
+            journal=call.runtime.journal,
+            tool=tool,
+            summary="; ".join(plan.lines),
+            usd=plan.usd,
+            fingerprint=print_,
+        ),
     )
+    if tx.state == "UNKNOWN":
+        return WalletResult(
+            **safety.unknown_result(tx.request_id or "", tx.error or "no answer").model_dump(),
+            calls=plan.lines,
+        )
     status = {
         "STATE_CONFIRMED": "confirmed",
         "STATE_FAILED": "failed",
@@ -243,7 +259,6 @@ async def split_position(
     each). Useful before quoting both sides."""
     market = await market_context(call, condition_id)
     plan = split_plan(market, _units(amount))
-    safety.check_daily(call, plan.usd or Decimal(0), "trading")
     return await _send(call, plan, "trading:split_position", dry_run)
 
 
@@ -272,10 +287,16 @@ def merge_plan(market: MarketContext, units: int) -> Plan:
     )
     amount = Decimal(units) / 1_000_000
     return Plan(
-        calls=[relayer.erc1155_set_approval_for_all(tokens, target), merge],
+        # The approval is withdrawn in the same batch, so nothing stays approved afterwards.
+        calls=[
+            relayer.erc1155_set_approval_for_all(tokens, target),
+            merge,
+            relayer.erc1155_set_approval_for_all(tokens, target, False),
+        ],
         lines=[
             f"approve outcome tokens for {target}",
             f"merge {amount} Yes + No into {amount} pUSD",
+            f"withdraw the approval for {target}",
         ],
         usd=None,
         metadata="Merge positions",
@@ -340,6 +361,8 @@ async def redeem_plan(call: Call, market: MarketContext) -> Plan:
     else:
         calls.append(relayer.ctf_redeem(target, market.condition_id))
         lines.append("redeem every resolved share of this market")
+    calls.append(relayer.erc1155_set_approval_for_all(tokens, target, False))
+    lines.append(f"withdraw the approval for {target}")
     return Plan(calls=calls, lines=lines, usd=None, metadata="Redeem positions")
 
 

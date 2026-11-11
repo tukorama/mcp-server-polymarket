@@ -33,8 +33,9 @@ shaped this package.
   type.
 - **An agent should not be able to spend money by accident.** Writes are hidden until you enable
   them, checked against per-order and daily USD limits and a price-sanity band, and confirmed by
-  the user with a description the server writes, not the model. Withdrawals go only to your own
-  wallet or an allowlist.
+  the user with a description the server writes, not the model, which shows every signed
+  parameter. Withdrawals go only to addresses provably yours or on an allowlist, and a Combo
+  quote is signed only if its amounts match what the user confirmed.
 - **Networks fail after sending.** A write whose outcome is unknown is journaled, an identical
   new request is blocked, and `resend_write` resends the exact signed bytes, which Polymarket
   deduplicates. Nothing that moves money is ever retried automatically.

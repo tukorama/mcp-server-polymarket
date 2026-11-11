@@ -1,6 +1,7 @@
 import base64
 import re
 import unicodedata
+from typing import Any
 
 _SECRETS: set[str] = set()
 
@@ -36,6 +37,14 @@ def scrub(text: str) -> str:
     for pattern, replacement in _PATTERNS:
         text = pattern.sub(replacement, text)
     return text
+
+
+def clean_label(text: Any, limit: int = 200) -> str | None:
+    """Untrusted text for one line of a confirmation: cleaned, with whitespace folded."""
+    if text is None:
+        return None
+    cleaned = clean_text(str(text), limit)
+    return " ".join(cleaned.split()) if cleaned else cleaned
 
 
 def clean_text(text: str | None, limit: int | None = None) -> str | None:

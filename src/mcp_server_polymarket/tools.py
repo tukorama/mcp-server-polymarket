@@ -19,6 +19,7 @@ from mcp_server_polymarket.capabilities import Capabilities
 from mcp_server_polymarket.errors import PolymarketError
 from mcp_server_polymarket.models.base import WriteResult
 from mcp_server_polymarket.ops import Call, Operation, Runtime, enabled_operations
+from mcp_server_polymarket.ops.registry import confirmation_gate
 from mcp_server_polymarket.redaction import scrub
 
 logger = logging.getLogger(__name__)
@@ -69,8 +70,8 @@ async def _invoke(op: Operation, ctx: Context, kwargs: dict[str, Any]) -> Any:
         raise agent_error(exc, op.name) from exc
 
 
-def refusal_without_elicitation(op: Operation) -> str:
-    if op.gate == "transfers":
+def refusal_without_elicitation(op: Operation, gate: str | None = None) -> str:
+    if (gate or op.gate) == "transfers":
         return (
             f"{op.name} moves funds and needs the user's confirmation, but this MCP client cannot "
             "ask the user. Use a client that supports elicitation, or call with dry_run=true to "
@@ -93,12 +94,13 @@ def _resolver(op: Operation, arg_names: list[str]) -> Any:
         if kwargs.get("dry_run"):
             return Confirmation(confirm=True)
         settings = runtime_of(ctx).settings
-        if settings.confirm == "none" and op.gate != "transfers":
+        gate = confirmation_gate(op, runtime_of(ctx), kwargs)
+        if settings.confirm == "none" and gate != "transfers":
             return Confirmation(confirm=True)
         resuming = ctx.input_responses is not None or ctx.request_state is not None
         capabilities = ctx.client_capabilities
         if not resuming and (capabilities is None or capabilities.elicitation is None):
-            raise ToolError(refusal_without_elicitation(op))
+            raise ToolError(refusal_without_elicitation(op, gate))
         try:
             text = await describe(make_call(ctx), **kwargs)
         except Exception as exc:
