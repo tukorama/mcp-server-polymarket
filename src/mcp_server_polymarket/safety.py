@@ -146,26 +146,42 @@ async def send_write(
     print_: str | None,
     headers: dict[str, str] | None = None,
     rejected: Callable[[Any], bool] | None = None,
+    path_args: dict[str, str] | None = None,
+    resendable: bool = True,
 ) -> tuple[Any, WriteResult | None]:
     """Journal, then send. Returns (response, None), or (None, result) when the outcome is unknown.
 
     Definite rejections raise. A request that may have reached Polymarket is never repeated
-    here; its bytes stay in the journal for resend_write. `rejected` recognises a refusal that
-    arrives as a 200 response, so it does not count toward the daily limit.
+    here; its bytes stay in the journal for resend_write, unless `resendable` is false (a
+    request that is useless later, or whose path the journal cannot rebuild). `rejected`
+    recognises a refusal that arrives as a 200 response, so it does not count toward the daily
+    limit.
     """
+    if path_args and resendable:
+        raise ValueError("A write with path arguments cannot be resent; pass resendable=False.")
     journal = call.runtime.journal
     raw = encode_body(body) if body is not None else None
     entry = journal.record(
-        tool=tool, endpoint=endpoint.key, summary=summary, usd=usd, fingerprint=print_, body=raw
+        tool=tool,
+        endpoint=endpoint.key,
+        summary=summary,
+        usd=usd,
+        fingerprint=print_,
+        body=raw if resendable else None,
     )
     try:
-        response = await call.request(endpoint, raw_body=raw, headers=headers)
+        response = await call.request(endpoint, raw_body=raw, headers=headers, path_args=path_args)
     except NotSent as exc:
         journal.finish(entry, "failed", {"error": exc.message})
         raise
     except (NetworkError, ServerError, DeadlineExceeded) as exc:
         journal.finish(entry, "unknown", {"error": exc.message})
-        return None, unknown_result(entry, exc.message)
+        result = unknown_result(entry, exc.message)
+        if not resendable:
+            result.next_step = (
+                "Do not repeat it. Check the account to learn whether it went through."
+            )
+        return None, result
     except PolymarketError as exc:
         journal.finish(entry, "failed", {"error": exc.message})
         raise

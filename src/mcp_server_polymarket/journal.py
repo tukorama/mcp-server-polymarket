@@ -19,7 +19,9 @@ from typing import Any
 
 # Signed Perps requests are valid for five minutes; keep bodies a little longer than that.
 BODY_TTL_SECONDS = 15 * 60
-SPENDING = ("pending", "sent", "unknown")
+# A refused resend says nothing about the first attempt, which may have gone through, so it
+# still counts toward the daily limit.
+SPENDING = ("pending", "sent", "unknown", "resend_rejected")
 
 _now = time.time
 
@@ -79,6 +81,9 @@ class Journal:
             (status, _json(response), keep_body, entry_id),
         )
 
+    def attach_body(self, entry_id: str, body: bytes) -> None:
+        self.db.execute("UPDATE writes SET body = ? WHERE id = ?", (body, entry_id))
+
     def get(self, entry_id: str) -> Entry | None:
         self._expire()
         row = self.db.execute("SELECT * FROM writes WHERE id = ?", (entry_id,)).fetchone()
@@ -93,16 +98,16 @@ class Journal:
         return [Entry(*row) for row in rows]
 
     def pending_duplicate(self, fingerprint: str) -> Entry | None:
-        """An identical write whose outcome is unknown and can still be resent.
+        """An identical write whose outcome became unknown in the last 15 minutes.
 
-        Once its body expires a resend is impossible, so the block lifts; the daily limit still
-        counts it.
+        That is as long as its body is kept for a resend; after that the block lifts, and the
+        daily limit still counts it.
         """
         self._expire()
         row = self.db.execute(
             "SELECT * FROM writes WHERE fingerprint = ? AND status = 'unknown' "
-            "AND body IS NOT NULL ORDER BY created DESC LIMIT 1",
-            (fingerprint,),
+            "AND created >= ? ORDER BY created DESC LIMIT 1",
+            (fingerprint, _now() - BODY_TTL_SECONDS),
         ).fetchone()
         return Entry(*row) if row else None
 

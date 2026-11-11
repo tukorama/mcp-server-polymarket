@@ -84,6 +84,12 @@ def _units(amount: Decimal) -> int:
     return int(units)
 
 
+def _recheck(call: Call, plan: Plan, print_: str) -> None:
+    if plan.usd is not None:
+        safety.check_daily(call, plan.usd, "trading")
+    safety.block_duplicate(call, print_)
+
+
 async def _send(call: Call, plan: Plan, tool: str, dry_run: bool) -> WalletResult:
     if dry_run:
         return WalletResult(status="preview", dry_run=True, calls=plan.lines)
@@ -107,6 +113,7 @@ async def _send(call: Call, plan: Plan, tool: str, dry_run: bool) -> WalletResul
             summary="; ".join(plan.lines),
             usd=plan.usd,
             fingerprint=print_,
+            check=lambda: _recheck(call, plan, print_),
         ),
     )
     if tx.state == "UNKNOWN":

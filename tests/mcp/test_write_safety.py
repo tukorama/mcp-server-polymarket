@@ -328,3 +328,119 @@ def test_allowlist_is_comma_separated(monkeypatch):
     monkeypatch.setenv("POLYMARKET_TRANSFER_ALLOWLIST", "0x123")
     with pytest.raises(ValueError, match="invalid address"):
         Settings(_env_file=None)  # type: ignore[call-arg]
+
+
+# Second review round
+
+
+async def test_a_refused_resend_still_counts_toward_the_daily_limit(user, api):
+    user.max_daily_usd = "6"
+    api.add(ep.CLOB_POST_ORDER, (200, drop))
+    async with asking(user, api) as client:
+        data = await call(client, "place_limit_order", **ORDER)
+        api.add(ep.CLOB_POST_ORDER, {"success": False, "errorMsg": "duplicate order"})
+        await call(client, "resend_write", request_id=data["request_id"])
+        # The first attempt may have filled: its $4.10 still counts.
+        assert "daily limit" in await error(client, "place_limit_order", **ORDER)
+
+
+async def test_a_refused_batch_resend_is_reported(user, api):
+    api.add(ep.CLOB_POST_ORDERS, (200, drop))
+    specs = [{**ORDER}, {**ORDER, "price": "0.40"}]
+    async with asking(user, api) as client:
+        data = await call(client, "place_orders", orders=specs)
+        api.add(ep.CLOB_POST_ORDERS, [{"success": False, "errorMsg": "duplicate"}] * 2)
+        resent = await call(client, "resend_write", request_id=data["request_id"])
+    assert resent["status"] == "rejected"
+
+
+@pytest.mark.parametrize(
+    ("tool", "endpoint", "arguments"),
+    [
+        (
+            "transfer_perps_internal",
+            ep.PERPS_INTERNAL_TRANSFER,
+            {"amount": "2", "to": "0x" + "7" * 40},
+        ),
+        ("adjust_perps_margin", ep.PERPS_MARGIN, {"instrument_id": 1, "amount": "5"}),
+    ],
+)
+async def test_perps_writes_with_an_unknown_outcome_block_a_repeat(
+    user, api, tool, endpoint, arguments
+):
+    user.transfer_allowlist = ["0x" + "7" * 40]
+    api.add(endpoint, (200, drop))
+    async with asking(user, api) as client:
+        first = await call(client, tool, **arguments)
+        assert first["status"] == "unknown"
+        assert first["request_id"] in await error(client, tool, **arguments)
+    assert len(api.calls(endpoint)) == 1
+
+
+async def test_perps_refusals_do_not_use_up_the_daily_limit(user, api):
+    user.max_daily_usd = "100"
+    api.add(ep.PERPS_CREATE_ORDERS, [{"status": "err", "error": "insufficient margin"}])
+    spec = {"instrument_id": 1, "side": "BUY", "quantity": "0.01", "price": "7590"}
+    async with asking(user, api) as client:
+        assert (await call(client, "place_perps_orders", orders=[spec]))["status"] == "rejected"
+        api.add(ep.PERPS_CREATE_ORDERS, [{"status": "ok"}])
+        assert (await call(client, "place_perps_orders", orders=[spec]))["status"] == "done"
+
+
+async def test_a_failed_status_check_after_submit_is_pending(user, api):
+    api.add(ep.RELAYER_TX_PARAMS, {"nonce": "1"})
+    api.add(ep.RELAYER_SUBMIT, {"transactionID": "t", "state": "STATE_NEW"})
+    api.add(ep.RELAYER_TX, (404, {"error": "not indexed yet"}))
+    async with asking(user, api) as client:
+        data = await call(client, "deposit_to_perps", amount="12")
+    assert data["status"] == "pending" and "status check failed" in data["message"]
+
+
+COMBO = {**QUOTE, "quote": {"quote_id": "q", "blended_price_e6": "500000"}}
+
+
+async def test_combo_accept_is_journaled_and_unknown_blocks_a_repeat(user, api):
+    quote = {**COMBO["quote"], "maker_amount_e6": "1000000", "taker_amount_e6": "2000000"}
+    api.add(ep.COMBO_REQUEST_CREATE, {**COMBO, "quote": quote})
+    api.add(ep.COMBO_REQUEST_ACCEPT, (200, drop))
+    args = {"legs": ["1", "2"], "direction": "BUY", "amount": "1", "worst_price": "0.55"}
+    async with asking(user, api) as client:
+        data = await call(client, "trade_combo", **args)
+        assert data["status"] == "unknown"
+        assert data["request_id"] in await error(client, "trade_combo", **args)
+        writes = (await call(client, "list_unconfirmed_writes"))["writes"]
+    assert writes[0]["resendable"] is False
+
+
+async def test_declined_combos_do_not_use_up_the_daily_limit(user, api):
+    user.max_daily_usd = "2"
+    bad = {**COMBO["quote"], "maker_amount_e6": "1000000", "taker_amount_e6": "1000000"}
+    api.add(ep.COMBO_REQUEST_CREATE, {**COMBO, "quote": bad})
+    args = {"legs": ["1", "2"], "direction": "BUY", "amount": "1.5", "worst_price": "0.55"}
+    async with asking(user, api) as client:
+        assert (await call(client, "trade_combo", **args))["status"] == "declined"
+        assert (await call(client, "trade_combo", **args))["status"] == "declined"
+
+
+async def test_combo_sells_are_checked_at_what_the_signed_order_receives(user, api):
+    user.max_order_usd = "30"
+    quote = {**COMBO["quote"], "maker_amount_e6": "50000000", "taker_amount_e6": "40000000"}
+    api.add(ep.COMBO_REQUEST_CREATE, {**COMBO, "quote": quote})
+    args = {"legs": ["1", "2"], "direction": "SELL", "amount": "50", "worst_price": "0.5"}
+    async with asking(user, api) as client:
+        data = await call(client, "trade_combo", **args)
+    assert data["status"] == "declined" and "above the limit" in data["message"]
+
+
+async def test_modifications_name_one_order_and_charge_only_the_increase(user, api):
+    user.max_daily_usd = "100"
+    resting = {"order_id": 5, "instrument_id": 1, "buy": True, "price": "7590", "quantity": "0.01"}
+    api.add(ep.PERPS_OPEN_ORDERS, [resting])
+    api.add(ep.PERPS_MODIFY_ORDERS, [{"status": "ok"}])
+    both = {"order_id": 5, "client_order_id": "c" * 32, "price": "7590", "quantity": "0.01"}
+    async with asking(user, api) as client:
+        assert "Give each change" in await error(client, "modify_perps_orders", changes=[both])
+        # Repricing the same quantity adds no exposure, so it can be repeated freely.
+        for price in ("7591", "7592", "7593"):
+            change = {"order_id": 5, "price": price, "quantity": "0.01"}
+            await call(client, "modify_perps_orders", changes=[change])

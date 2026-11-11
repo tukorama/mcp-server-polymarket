@@ -1,5 +1,6 @@
 """Combos: positions on several outcomes at once, priced by request for quote."""
 
+import asyncio
 from decimal import Decimal
 from typing import Annotated, Any, Literal
 
@@ -173,10 +174,13 @@ async def trade_combo(
         return ComboTrade(status="preview", dry_run=True, message=f"{direction} {amount}")
     settings = call.settings
     await safety.check_geoblock(call)
-    # BUY spends at most `amount`; SELL is valued at the worst accepted price per share.
+    # A first check of the most the trade can be worth; the accept is checked again with the
+    # quote's real amounts. BUY spends at most `amount`; SELL is valued at worst_price.
     usd = amount if direction == "BUY" else amount * worst_price
     safety.check_limit(settings.max_order_usd, usd, "A Combo", "POLYMARKET_MAX_ORDER_USD")
     safety.check_daily(call, usd, "trading")
+    print_ = safety.fingerprint("combo", legs, direction, str(amount))
+    safety.block_duplicate(call, print_)
     signer = signer_of(call)
     if signer.session_key:
         raise Refused("Combos are not supported for session keys yet; use the owner's key.")
@@ -192,14 +196,15 @@ async def trade_combo(
             "value_e6": _e6(amount),
         },
     }
+    # Requesting a quote commits nothing, so it is journaled without a USD amount.
     created, unknown = await safety.send_write(
         call,
-        tool="trading:trade_combo",
+        tool="trading:trade_combo_request",
         endpoint=ep.COMBO_REQUEST_CREATE,
         body=request,
-        summary=f"combo {direction} {amount} over {len(legs)} legs",
-        usd=usd,
-        print_=safety.fingerprint("combo", legs, direction, str(amount)),
+        summary=f"combo quote request {direction} {amount} over {len(legs)} legs",
+        usd=None,
+        print_=None,
     )
     if unknown:
         return ComboTrade(**unknown.model_dump())
@@ -211,22 +216,23 @@ async def trade_combo(
             status="no_quote", request_id=request_id, message=str(created.get("error") or created)
         )
     price = Decimal(str(quote.get("blended_price_e6", "0"))) / 1_000_000
+    position = (created.get("request") or {}).get("yes_position_id")
+    problem = None
     if (direction == "BUY" and price > worst_price) or (
         direction == "SELL" and price < worst_price
     ):
-        return ComboTrade(
-            status="declined",
-            request_id=request_id,
-            quote=quote,
-            message=f"The quote price {price} is outside {worst_price}; it was not accepted.",
-        )
-    position = (created.get("request") or {}).get("yes_position_id")
-    problem = _quote_problem(direction, amount, worst_price, quote, position)
-    if problem is None and direction == "SELL":
+        problem = f"The quote price {price} is outside {worst_price}."
+    problem = problem or _quote_problem(direction, amount, worst_price, quote, position)
+    fill_usd = Decimal(0)
+    if problem is None:
+        # What the signed order commits: pUSD paid (BUY) or pUSD received (SELL).
+        side_amount = quote["maker_amount_e6" if direction == "BUY" else "taker_amount_e6"]
+        fill_usd = Decimal(int(side_amount)) / 1_000_000
         try:
             safety.check_limit(
-                settings.max_order_usd, amount * price, "A Combo", "POLYMARKET_MAX_ORDER_USD"
+                settings.max_order_usd, fill_usd, "A Combo", "POLYMARKET_MAX_ORDER_USD"
             )
+            safety.check_daily(call, fill_usd, "trading")
         except Refused as exc:
             problem = exc.message
     if problem is not None:
@@ -237,11 +243,26 @@ async def trade_combo(
             message=f"{problem} The quote was not accepted.",
         )
     signed = _acceptance_order(signer, direction, str(position), quote)
-    accepted = await call.json(
-        ep.COMBO_REQUEST_ACCEPT,
+    # The accept is what trades. Its window is seconds long, so it is never resent.
+    accepted, unknown = await safety.send_write(
+        call,
+        tool="trading:trade_combo",
+        endpoint=ep.COMBO_REQUEST_ACCEPT,
         path_args={"id": str(request_id)},
         body={"quote_id": quote.get("quote_id"), "signed_order": signed},
+        summary=f"accept combo {request_id}: {direction} for {fill_usd} pUSD",
+        usd=fill_usd,
+        print_=print_,
+        rejected=lambda d: isinstance(d, dict) and d.get("status") == "FAILED",
+        resendable=False,
     )
+    if unknown:
+        # request_id stays the journal entry; the RFQ id is for get_combo_request.
+        unknown.next_step = (
+            f"Do not repeat it. Check get_combo_request(request_id='{request_id}') to learn "
+            "whether the Combo traded."
+        )
+        return ComboTrade(**unknown.model_dump(), quote=quote)
     accepted = accepted if isinstance(accepted, dict) else {}
     return ComboTrade(
         status="accepted" if accepted.get("status") != "FAILED" else "failed",
@@ -342,7 +363,7 @@ async def execute_collateral_return(
 ) -> WriteResult:
     """Execute a collateral return plan: the call is fetched again from Polymarket, checked to
     target the Polymarket Router, signed as a Deposit Wallet batch and submitted."""
-    from mcp_server_polymarket import wallet_tx
+    from mcp_server_polymarket import safety, wallet_tx
     from mcp_server_polymarket.signing import relayer
     from mcp_server_polymarket.signing.wallets import ROUTER_V2
 
@@ -356,11 +377,26 @@ async def execute_collateral_return(
     if str(router_call.get("to", "")).lower() != ROUTER_V2.lower():
         raise Refused("The plan does not target the Polymarket Router; refusing to sign it.")
     calls = [relayer.Call(target=ROUTER_V2, data=str(router_call.get("data")), value=0)]
-    signed = await wallet_tx.sign_batch(call.client, call.identity, calls, deadline=call.deadline)
-    envelope = relayer.batch_wire(calls=calls, metadata="Collateral return", **signed)
-    data = await call.json(
-        ep.COLLATERAL_RETURN_SUBMIT, body={"plan_hash": plan_hash, "envelope": envelope}
-    )
+    print_ = safety.fingerprint("collateral-return", wallet, plan_hash)
+    safety.block_duplicate(call, print_)
+    # Same lock as other Deposit Wallet batches: they share the wallet's nonce.
+    lock = wallet_tx._locks.setdefault(str(wallet).lower(), asyncio.Lock())
+    async with lock:
+        signed = await wallet_tx.sign_batch(
+            call.client, call.identity, calls, deadline=call.deadline
+        )
+        envelope = relayer.batch_wire(calls=calls, metadata="Collateral return", **signed)
+        data, unknown = await safety.send_write(
+            call,
+            tool="trading:execute_collateral_return",
+            endpoint=ep.COLLATERAL_RETURN_SUBMIT,
+            body={"plan_hash": plan_hash, "envelope": envelope},
+            summary=f"collateral return {plan_hash}",
+            usd=None,
+            print_=print_,
+        )
+    if unknown:
+        return unknown
     return WriteResult(
         status="submitted", raw=data, next_step="Follow it with get_relayer_transaction."
     )

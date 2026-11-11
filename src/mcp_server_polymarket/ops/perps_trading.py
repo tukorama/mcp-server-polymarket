@@ -101,10 +101,30 @@ async def send_op(
 ) -> tuple[Any, WriteResult | None]:
     from mcp_server_polymarket.signing.perps import signed_request
 
+    if print_ is not None:
+        # A fresh salt makes a new signature a new request, so an identical write whose
+        # outcome is unknown must be resolved first.
+        safety.block_duplicate(call, print_)
     body = signed_request(key, op, salt=secrets.randbits(32), ts_ms=now_ms())
     return await safety.send_write(
-        call, tool=tool, endpoint=endpoint, body=body, summary=summary, usd=usd, print_=print_
+        call,
+        tool=tool,
+        endpoint=endpoint,
+        body=body,
+        summary=summary,
+        usd=usd,
+        print_=print_,
+        rejected=_rejected,
     )
+
+
+def _rejected(data: Any) -> bool:
+    """A Perps refusal that arrives as a 200 response: every row is an error."""
+    if isinstance(data, dict):
+        return data.get("status") == "err"
+    if isinstance(data, list):
+        return bool(data) and all(isinstance(r, dict) and r.get("status") == "err" for r in data)
+    return False
 
 
 def _outcome(data: Any) -> PerpsResult:
@@ -260,9 +280,10 @@ async def place_perps_orders(
     dry_run: DryRun = False,
 ) -> PerpsResult:
     """Place Perps orders. An order with take_profit or stop_loss is sent as a bracket: the
-    entry plus reduce-only exit orders that trigger on the mark price. Prices and quantities are
-    decimal strings within the instrument's decimals (list_perps_instruments). Checked against
-    the mark price and the USD limits; the user confirms. Only on the user's explicit request."""
+    entry plus reduce-only exit orders that trigger at their trigger price. Prices and
+    quantities are decimal strings within the instrument's decimals (list_perps_instruments).
+    Checked against the mark price and the USD limits; the user confirms. Only on the user's
+    explicit request."""
     from mcp_server_polymarket.signing import perps
 
     brackets = any(o.take_profit or o.stop_loss for o in orders)
@@ -304,25 +325,30 @@ class Modification(BaseModel):
     quantity: Annotated[Amount, Field(description="The new total quantity.")]
 
 
-async def _modified(call: Call, changes: list[Modification]) -> tuple[Decimal, list[str]]:
+async def _modified(call: Call, changes: list[Modification]) -> tuple[Decimal, Decimal, list[str]]:
     """Check each change like a new order, against the resting order it changes.
 
-    Returns the exposure the changed orders add up to, and a line per change.
+    Returns the exposure the changed orders add up to, how much of it is new (for the daily
+    limit, which already counted the original orders), and a line per change.
     """
     body = await call.json(ep.PERPS_OPEN_ORDERS)
     if isinstance(body, dict):
         body = next((v for v in body.values() if isinstance(v, list)), [])
     resting = [o for o in body or [] if isinstance(o, dict)]
     settings = call.settings
-    total = Decimal(0)
+    total = added = Decimal(0)
     lines = []
     for change in changes:
         order = next(
             (
                 o
                 for o in resting
-                if (change.order_id is not None and o.get("order_id") == change.order_id)
-                or (change.client_order_id and o.get("client_order_id") == change.client_order_id)
+                # The same key the signed op uses: order_id when given, else client_order_id.
+                if (
+                    o.get("order_id") == change.order_id
+                    if change.order_id is not None
+                    else o.get("client_order_id") == change.client_order_id
+                )
             ),
             None,
         )
@@ -340,17 +366,22 @@ async def _modified(call: Call, changes: list[Modification]) -> tuple[Decimal, l
             price, mark, side, "Price", relative=True, limit=settings.max_price_deviation
         )
         if not order.get("ro"):
-            total += quantity * max(price, mark or Decimal(0))
+            value = quantity * max(price, mark or Decimal(0))
+            old_price = _decimal(order.get("price"), "price") or Decimal(0)
+            old_quantity = _decimal(order.get("quantity"), "quantity") or Decimal(0)
+            old = old_quantity * max(old_price, mark or Decimal(0))
+            total += value
+            added += max(Decimal(0), value - old)
         lines.append(
             f"order {name} ({side} {info.get('symbol')}): price {order.get('price')} -> {price}, "
             f"quantity {order.get('quantity')} -> {quantity}"
         )
-    return total, lines
+    return total, added, lines
 
 
 async def _describe_modify(call: Call, changes: list[Any], dry_run: bool = False) -> str:
     items = [c if isinstance(c, Modification) else Modification.model_validate(c) for c in changes]
-    total, lines = await _modified(call, items)
+    total, _, lines = await _modified(call, items)
     return (
         f"Change these Perps orders (about ${total:.2f} of exposure afterwards)?\n- "
         + "\n- ".join(lines)
@@ -376,7 +407,8 @@ async def modify_perps_orders(
 
     by_id = [c for c in changes if c.order_id is not None]
     by_coid = [c for c in changes if c.order_id is None and c.client_order_id]
-    if by_id and by_coid or len(by_id) + len(by_coid) != len(changes):
+    both = any(c.order_id is not None and c.client_order_id for c in changes)
+    if both or by_id and by_coid or len(by_id) + len(by_coid) != len(changes):
         raise InvalidRequest("Give each change an order_id, or each a client_order_id.")
     if by_id:
         op = perps.modify_orders([(c.order_id, c.price, c.quantity) for c in by_id])  # type: ignore[misc]
@@ -384,7 +416,7 @@ async def modify_perps_orders(
     else:
         op = perps.modify_orders_coid([(c.client_order_id, c.price, c.quantity) for c in by_coid])  # type: ignore[misc]
         endpoint = ep.PERPS_MODIFY_ORDERS_COID
-    total, lines = await _modified(call, changes)
+    total, added, lines = await _modified(call, changes)
     if dry_run:
         return PerpsResult(
             status="preview",
@@ -396,9 +428,8 @@ async def modify_perps_orders(
     safety.check_limit(
         settings.max_perps_order_usd, total, "This change", "POLYMARKET_MAX_PERPS_ORDER_USD"
     )
-    safety.check_daily(call, total, "perps")
+    safety.check_daily(call, added, "perps")
     print_ = safety.fingerprint("perps-modify", [c.model_dump() for c in changes])
-    safety.block_duplicate(call, print_)
     data, unknown = await send_op(
         call,
         tool="perps:modify_perps_orders",
@@ -406,7 +437,7 @@ async def modify_perps_orders(
         op=op,
         key=proxy_key(call),
         summary="; ".join(lines),
-        usd=total,
+        usd=added,
         print_=print_,
     )
     return PerpsResult(**unknown.model_dump()) if unknown else _outcome(data)
@@ -733,6 +764,7 @@ async def deposit_to_perps(
             summary=f"deposit {amount} pUSD to the Perps account of {owner}",
             usd=amount,
             fingerprint=print_,
+            check=lambda: _recheck_deposit(call, amount, print_),
         ),
     )
     if tx.state == "UNKNOWN":
@@ -754,6 +786,11 @@ async def deposit_to_perps(
         if status != "failed"
         else None,
     )
+
+
+def _recheck_deposit(call: Call, amount: Decimal, print_: str) -> None:
+    safety.check_daily(call, amount, "transfers")
+    safety.block_duplicate(call, print_)
 
 
 def _withdraw_recipient(call: Call, to: str | None) -> tuple[str, list[str | None]]:
@@ -824,6 +861,7 @@ async def withdraw_from_perps(
     data, unknown = await safety.send_write(
         call,
         tool="transfers:withdraw_from_perps",
+        rejected=_rejected,
         endpoint=ep.PERPS_WITHDRAW,
         body=body,
         summary=f"withdraw {amount} pUSD to {recipient}",

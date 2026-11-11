@@ -4,6 +4,7 @@ import asyncio
 import logging
 import re
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -52,6 +53,9 @@ class Record:
     summary: str
     usd: Any = None
     fingerprint: str | None = None
+    # Limit checks to run again right before the entry is written: the nonce fetch and the
+    # wallet lock await, so a concurrent write may have been journaled since the first check.
+    check: Callable[[], None] | None = None
 
 
 def _tx_fields(body: Any) -> WalletTx:
@@ -165,7 +169,17 @@ async def submit(
     tx = _tx_fields(response)
     if not tx.transaction_id:
         return tx
-    tx = await follow(client, tx.transaction_id, wait_seconds=wait_seconds, deadline=deadline)
+    try:
+        tx = await follow(client, tx.transaction_id, wait_seconds=wait_seconds, deadline=deadline)
+    except PolymarketError as exc:
+        # The batch was accepted; only the status check failed. Never report it as unsent.
+        return WalletTx(
+            transaction_id=tx.transaction_id,
+            state=tx.state or "STATE_NEW",
+            transaction_hash=tx.transaction_hash,
+            error=f"Submitted; the status check failed: {exc.message}",
+            raw=tx.raw,
+        )
     if record is not None and entry is not None and tx.state in ("STATE_FAILED", "STATE_INVALID"):
         record.journal.finish(entry, "failed", {"state": tx.state, "error": tx.error})
     return tx
@@ -179,6 +193,8 @@ async def _post(
     raw = encode_body(body)
     entry = None
     if record is not None:
+        if record.check is not None:
+            record.check()
         entry = record.journal.record(
             tool=record.tool,
             endpoint=ep.RELAYER_SUBMIT.key,

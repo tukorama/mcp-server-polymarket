@@ -741,7 +741,7 @@ async def resend_write(call: Call, request_id: str) -> WriteResult:
     data = parse_json(response)
     verdict = _resend_verdict(entry.tool, data)
     if verdict is not None:
-        journal.finish(request_id, "rejected", data)
+        journal.finish(request_id, "resend_rejected", data)
         return WriteResult(
             status="rejected",
             request_id=request_id,
@@ -759,6 +759,9 @@ def _resend_verdict(tool: str, data: Any) -> str | None:
         from mcp_server_polymarket.ops.perps_trading import _outcome
 
         result = _outcome(data)
-    else:
-        result = outcome_of(data)
-    return (result.message or "rejected") if result.status == "rejected" else None
+        return (result.message or "rejected") if result.status == "rejected" else None
+    rows = data if isinstance(data, list) else [data]
+    results = [outcome_of(row) for row in rows]
+    if results and all(r.status == "rejected" for r in results):
+        return results[0].message or "rejected"
+    return None
