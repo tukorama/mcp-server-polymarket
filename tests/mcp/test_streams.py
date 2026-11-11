@@ -150,7 +150,11 @@ async def test_watch_my_orders_needs_and_sends_credentials(ws_settings, api, ope
     async with await open_session(ws_settings, api) as client:
         data = await call(client, "watch_my_orders", max_events=1, seconds=5)
     subscribe = json.loads(RECEIVED[0])
-    assert subscribe["auth"] == {"apiKey": "key-123", "secret": "c2VjcmV0", "passphrase": "pass-456"}
+    assert subscribe["auth"] == {
+        "apiKey": "key-123",
+        "secret": "c2VjcmV0",
+        "passphrase": "pass-456",
+    }
     assert data["events"][0]["type"] == "PLACEMENT"
 
 
@@ -188,7 +192,11 @@ async def test_watch_live_data_public_and_authenticated(ws_settings, api, open_s
         )
     auth, subscribe = (json.loads(m) for m in RECEIVED[:2])
     assert auth["op"] == "auth" and auth["auth"]["apiKey"] == "k"
-    assert subscribe["filter"] == {"symbol": "btcusd", "window_seconds": 60, "provider": "chainlink"}
+    assert subscribe["filter"] == {
+        "symbol": "btcusd",
+        "window_seconds": 60,
+        "provider": "chainlink",
+    }
 
 
 async def test_watch_perps_market_and_account(ws_settings, api, open_session):

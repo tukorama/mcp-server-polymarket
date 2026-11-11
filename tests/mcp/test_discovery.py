@@ -190,7 +190,9 @@ async def test_profile_falls_back_to_the_older_route(settings, api):
     api.add(ep.GAMMA_PUBLIC_PROFILE, (404, {"error": "not found"}))
     api.add(ep.GAMMA_PROFILE_BY_USER, fixture("gamma_profile"))
     async with session(settings, api) as client:
-        data = await call(client, "get_profile", address="0x983eedfbd75803602e4a6e6ea9aab6dc6b9c6748")
+        data = await call(
+            client, "get_profile", address="0x983eedfbd75803602e4a6e6ea9aab6dc6b9c6748"
+        )
     assert data["taker_tier"] == "Platinum"
 
 

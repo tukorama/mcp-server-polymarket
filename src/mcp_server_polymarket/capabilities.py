@@ -114,6 +114,12 @@ class Capabilities:
         if identity.signer_address is not None and identity.wallet_address is None:
             notes.append("POLYMARKET_WALLET_ADDRESS is needed before anything can be signed.")
         if signer:
+            try:
+                _ = identity.wallet_kind
+            except ConfigError as exc:
+                notes.append(exc.for_agent())
+                signer = False
+        if signer:
             have.add("signer")
             if settings.signer_role == "owner":
                 have.add("owner_signer")

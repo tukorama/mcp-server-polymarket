@@ -15,9 +15,7 @@ def normalize(key: str) -> str:
 
 
 def published() -> set[str]:
-    return {
-        normalize(f"{e['service']} {e['method']} {e['path']}") for e in MANIFEST["endpoints"]
-    }
+    return {normalize(f"{e['service']} {e['method']} {e['path']}") for e in MANIFEST["endpoints"]}
 
 
 def implemented() -> set[str]:

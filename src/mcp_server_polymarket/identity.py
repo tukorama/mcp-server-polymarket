@@ -124,10 +124,53 @@ class Identity:
             return session
         return self.store.load_perps()
 
+    @cached_property
+    def wallet_kind(self) -> int | None:
+        """The wallet's order signature type (0 EOA, 1 proxy, 2 Safe, 3 Deposit Wallet).
+
+        Derived from the signer and wallet addresses; never guessed. A wallet the signer cannot
+        have created is only accepted as a Deposit Wallet whose session key is the signer.
+        """
+        signer, wallet = self.signer_address, self.wallet_address
+        if signer is None or wallet is None:
+            return self.settings.signature_type
+        from mcp_server_polymarket.signing.wallets import WalletKind, classify_wallet
+
+        kind = classify_wallet(signer, wallet)
+        role = self.settings.signer_role
+        if kind is None:
+            if role != "session_key":
+                raise ConfigError(
+                    "POLYMARKET_WALLET_ADDRESS is not a wallet this key created.",
+                    hint="Check both addresses. If the key is a Deposit Wallet session key, set "
+                    "POLYMARKET_SIGNER_ROLE=session_key.",
+                )
+            kind = WalletKind.DEPOSIT_WALLET
+        elif role == "session_key":
+            raise ConfigError(
+                "POLYMARKET_SIGNER_ROLE=session_key, but this key owns the wallet.",
+                hint="Remove POLYMARKET_SIGNER_ROLE, or use the session key's own private key.",
+            )
+        configured = self.settings.signature_type
+        if configured is not None and configured != int(kind):
+            raise ConfigError(
+                f"POLYMARKET_SIGNATURE_TYPE={configured} contradicts the wallet, which is "
+                f"{kind.name} ({int(kind)}).",
+                hint="Remove POLYMARKET_SIGNATURE_TYPE; it is worked out from the addresses.",
+            )
+        return int(kind)
+
     @property
     def signature_type(self) -> int | None:
         """The wallet's signature type, as account reads and orders need it."""
-        return self.settings.signature_type
+        try:
+            return self.wallet_kind
+        except ConfigError:
+            return self.settings.signature_type
+
+    @property
+    def is_session_key(self) -> bool:
+        return self.settings.signer_role == "session_key"
 
     @cached_property
     def wallet_address(self) -> str | None:

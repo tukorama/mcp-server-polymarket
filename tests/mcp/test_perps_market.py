@@ -43,7 +43,9 @@ async def test_tickers_merge_statistics_and_bbo(settings, api):
     ticker = data["tickers"][0]
     assert ticker["mark_price"] and ticker["next_funding"].endswith("Z")
     assert "klines" not in ticker
-    assert any(key.startswith("bbo_") or key in ("bid_price", "best_bid") for key in ticker) or ticker
+    assert (
+        any(key.startswith("bbo_") or key in ("bid_price", "best_bid") for key in ticker) or ticker
+    )
 
 
 async def test_book_and_candles(settings, api, clock):
@@ -58,7 +60,9 @@ async def test_book_and_candles(settings, api, clock):
         assert {"open", "high", "low", "close", "volume"} <= set(candle)
         query = api.query(ep.PERPS_KLINES)
         assert query["interval"] == "1d" and int(query["start_timestamp"]) > 0
-        data = await call(client, "get_perps_candles", instrument_id=1, kind="mark", start="2026-11-01")
+        data = await call(
+            client, "get_perps_candles", instrument_id=1, kind="mark", start="2026-11-01"
+        )
         assert api.query(ep.PERPS_MARK_HISTORY)["start_timestamp"] == "1793491200000"
         assert set(data["candles"][0]) == {"time", "close"}
 
@@ -95,7 +99,11 @@ async def test_public_account(settings, api):
         fills = await call(client, "list_perps_public_fills", address=ADDRESS, oldest_first=True)
         assert api.query(ep.PERPS_PUBLIC_FILLS)["sort"] == "asc" and fills["items"]
         await call(
-            client, "list_perps_public_fills", address=ADDRESS, instrument_id=1, current_position=True
+            client,
+            "list_perps_public_fills",
+            address=ADDRESS,
+            instrument_id=1,
+            current_position=True,
         )
         assert "needs instrument_id" in await error(
             client, "list_perps_public_fills", address=ADDRESS, current_position=True

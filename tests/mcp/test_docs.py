@@ -60,7 +60,9 @@ async def test_read_doc_strips_the_banner_and_pages(settings, api):
         data = await call(client, "read_doc", url="/trading/fees", max_chars=500)
         assert data["text"].startswith("# Fees")
         assert "next_offset" not in data
-        first = await call(client, "read_doc", url="https://docs.polymarket.com/trading/fees.md", max_chars=500)
+        first = await call(
+            client, "read_doc", url="https://docs.polymarket.com/trading/fees.md", max_chars=500
+        )
         assert first["url"] == "https://docs.polymarket.com/trading/fees.md"
 
 

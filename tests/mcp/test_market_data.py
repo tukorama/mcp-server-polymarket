@@ -43,11 +43,17 @@ async def test_price_history_summarises(settings, api):
     api.add(ep.DATA_PRICES_HISTORY, fixture("data_prices_history"))
     async with session(settings, api) as client:
         data = await call(client, "get_price_history", token_id="9", interval="1w")
-        assert api.query(ep.DATA_PRICES_HISTORY) == {"token_id": "9", "limit": "500", "interval": "1w"}
+        assert api.query(ep.DATA_PRICES_HISTORY) == {
+            "token_id": "9",
+            "limit": "500",
+            "interval": "1w",
+        }
         assert data["points"][0]["time"].endswith("Z")
         assert data["resolution_seconds"] == 300
         assert data["high"] >= data["low"]
-        await call(client, "get_price_history", token_id="9", start="2026-11-01", bucket_seconds=3600)
+        await call(
+            client, "get_price_history", token_id="9", start="2026-11-01", bucket_seconds=3600
+        )
         query = api.query(ep.DATA_PRICES_HISTORY)
         assert query["start"] == "1793491200" and query["bucket_seconds"] == "3600"
         await call(client, "get_price_history", token_id="9", as_of="1793491200", bucket_seconds=60)

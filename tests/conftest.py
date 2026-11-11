@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 import httpx2
 import pytest
 
+from mcp_server_polymarket import wallet_tx
 from mcp_server_polymarket.client import base, cache
 from mcp_server_polymarket.client import endpoints as ep
 from mcp_server_polymarket.config import Settings
@@ -106,6 +107,9 @@ def clock(monkeypatch: pytest.MonkeyPatch) -> FakeClock:
     monkeypatch.setattr(base, "_monotonic", fake.monotonic)
     monkeypatch.setattr(base, "_now", fake.time)
     monkeypatch.setattr(cache, "_now", fake.time)
+    monkeypatch.setattr(wallet_tx, "_sleep", fake.sleep)
+    monkeypatch.setattr(wallet_tx, "_now", fake.time)
+    monkeypatch.setattr(wallet_tx, "_monotonic", fake.monotonic)
     return fake
 
 

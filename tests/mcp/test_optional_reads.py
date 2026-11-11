@@ -48,7 +48,10 @@ async def test_rewards(everything, api):
     api.add(ep.CLOB_REWARDS_MARKET, fixture("clob_rewards_market"))
     api.add(ep.CLOB_REBATES, {"data": [{"condition_id": "0xa", "rebated_fees_usdc": 1.5}]})
     api.add(ep.CLOB_USER_EARNINGS_TOTAL, [{"asset_address": "0xusdc", "earnings": 2.1}])
-    api.add(ep.CLOB_USER_EARNINGS, {"data": [{"condition_id": "0xa", "earnings": 1}], "next_cursor": "LTE="})
+    api.add(
+        ep.CLOB_USER_EARNINGS,
+        {"data": [{"condition_id": "0xa", "earnings": 1}], "next_cursor": "LTE="},
+    )
     api.add(ep.CLOB_USER_REWARD_PERCENTAGES, {"0xa": 12.5})
     api.add(ep.CLOB_USER_REWARD_MARKETS, {"data": [], "next_cursor": "MTAw"})
     api.add(ep.CLOB_ORDER_SCORING, {"scoring": True})

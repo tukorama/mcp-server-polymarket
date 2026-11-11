@@ -1,4 +1,5 @@
 from mcp_server_polymarket.ops import (  # noqa: F401
+    account,
     analytics,
     bridge,
     builder,
@@ -6,6 +7,7 @@ from mcp_server_polymarket.ops import (  # noqa: F401
     discovery,
     docs,
     market_data,
+    perps_account,
     perps_extras,
     perps_market,
     rewards,
