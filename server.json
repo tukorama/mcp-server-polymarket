@@ -1,0 +1,77 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.tukorama/mcp-server-polymarket",
+  "title": "Polymarket (unofficial)",
+  "description": "Polymarket prediction markets and perps: market data, positions, accounts and gated trading. Unofficial.",
+  "websiteUrl": "https://pypi.org/project/mcp-server-polymarket/",
+  "repository": {
+    "url": "https://github.com/tukorama/mcp-server-polymarket",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "mcp-server-polymarket",
+      "version": "0.1.0",
+      "runtimeHint": "uvx",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        {
+          "name": "POLYMARKET_TOOLSETS",
+          "description": "Tool groups to expose, e.g. auto, all, predictions, perps, or auto,+sports,-docs.",
+          "isRequired": false
+        },
+        {
+          "name": "POLYMARKET_API_KEY",
+          "description": "CLOB API key for reading your orders and trades. Not needed after `mcp-server-polymarket auth`.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "POLYMARKET_API_SECRET",
+          "description": "CLOB API secret.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "POLYMARKET_API_PASSPHRASE",
+          "description": "CLOB API passphrase.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "POLYMARKET_ADDRESS",
+          "description": "Signer address the CLOB API credentials belong to.",
+          "isRequired": false
+        },
+        {
+          "name": "POLYMARKET_PRIVATE_KEY_FILE",
+          "description": "File holding the signing key. Signing needs the `signing` extra.",
+          "isRequired": false
+        },
+        {
+          "name": "POLYMARKET_WALLET_ADDRESS",
+          "description": "Your Polymarket wallet (the address shown in your profile). Required for signing.",
+          "isRequired": false
+        },
+        {
+          "name": "POLYMARKET_ALLOW_TRADING",
+          "description": "Set to true to expose order placement and cancellation tools.",
+          "isRequired": false
+        },
+        {
+          "name": "POLYMARKET_ALLOW_TRANSFERS",
+          "description": "Set to true to expose deposit, withdrawal and transfer tools.",
+          "isRequired": false
+        },
+        {
+          "name": "POLYMARKET_MAX_ORDER_USD",
+          "description": "Largest order value in USD a single tool call may place (default 100).",
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}

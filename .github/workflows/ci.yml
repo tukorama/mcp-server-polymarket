@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - run: uv sync --locked --all-extras
+      - run: uv run ruff check
+      - run: uv run ruff format --check
+      - run: uv run pyright
+      - run: uv run pip-audit
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.11", "3.12", "3.13", "3.14"]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: ${{ matrix.python }}
+      - run: uv sync --locked --all-extras
+      - run: uv run pytest
+        env:
+          # One full run fails when an endpoint no test reaches is added.
+          POLYMARKET_TEST_COVERAGE: ${{ matrix.os == 'ubuntu-latest' && matrix.python == '3.12' && 'strict' || '' }}
+
+  base-install:
+    # The default install has no signing stack. It must still start and serve read tools.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - run: uv sync --locked --no-default-groups
+      - name: Server starts without eth_account
+        run: |
+          uv run --no-sync python -c "
+          import sys
+          from mcp_server_polymarket.server import create_server
+          create_server()
+          assert 'eth_account' not in sys.modules, 'eth_account was imported'
+          "
+      - run: uv run --no-sync mcp-server-polymarket tools
+
+  oracle:
+    # Our signatures against the official SDK's. Golden vectors in tests/ guard the matrix.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - run: uv run --locked --all-extras --with polymarket-client==0.18.0 pytest tests/oracle -m oracle
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - run: uv build --no-sources
+      - run: uvx twine check dist/*
+      - name: Smoke test the wheel, with and without the signing extra
+        run: |
+          uvx --from dist/*.whl mcp-server-polymarket tools
+          uvx --from "$(ls dist/*.whl)[signing]" mcp-server-polymarket tools
+      - name: Validate the MCP Registry manifest
+        env:
+          VERSION: v1.8.9
+          SHA256: 4d527ca8f1ced0394c962dc925c2a4a4addef441cbefd62501c875e9481823a8
+        run: |
+          curl -fsSL -o mcp-publisher.tar.gz "https://github.com/modelcontextprotocol/registry/releases/download/$VERSION/mcp-publisher_linux_amd64.tar.gz"
+          echo "$SHA256  mcp-publisher.tar.gz" | sha256sum --check
+          tar xzf mcp-publisher.tar.gz mcp-publisher
+          ./mcp-publisher validate server.json

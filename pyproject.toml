@@ -1,0 +1,92 @@
+[project]
+name = "mcp-server-polymarket"
+version = "0.1.0"
+description = "MCP server and LangGraph tools for the Polymarket API: prediction markets and perps, market data, accounts and gated trading. Unofficial, not affiliated with Polymarket."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.11"
+authors = [{ name = "Marcell Tukora" }]
+keywords = [
+    "polymarket",
+    "prediction-markets",
+    "perps",
+    "perpetual-futures",
+    "mcp",
+    "model-context-protocol",
+    "langgraph",
+    "langchain",
+    "clob",
+    "trading",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
+dependencies = [
+    "httpx2[ws]>=2.16",
+    "mcp>=2.3,<3",
+    "pydantic>=2.12",
+    "pydantic-settings>=2.10",
+    "starlette>=0.48",
+    "uvicorn>=0.31.1",
+]
+
+[project.optional-dependencies]
+signing = ["eth-account>=0.13", "eth-abi>=5", "msgpack>=1"]
+langgraph = ["langchain>=1.4.6", "langchain-core>=1.0", "langgraph>=1.2"]
+
+[project.scripts]
+mcp-server-polymarket = "mcp_server_polymarket.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/tukorama/mcp-server-polymarket"
+Repository = "https://github.com/tukorama/mcp-server-polymarket"
+Issues = "https://github.com/tukorama/mcp-server-polymarket/issues"
+Changelog = "https://github.com/tukorama/mcp-server-polymarket/blob/main/CHANGELOG.md"
+
+[dependency-groups]
+dev = [
+    "anyio>=4.9",
+    "mcp[cli]>=2.3,<3",
+    "pip-audit>=2.10",
+    "pyright>=1.1.400",
+    "pytest>=8.4",
+    "ruff>=0.12",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14"]
+build-backend = "uv_build"
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pyright]
+include = ["src"]
+pythonVersion = "3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "live: talks to the real Polymarket API (needs POLYMARKET_LIVE=1)",
+    "oracle: compares signatures with the official SDK (needs polymarket-client installed)",
+]
