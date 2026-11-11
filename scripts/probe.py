@@ -48,7 +48,7 @@ def main(out: Path) -> int:
             body = response.json()
         except ValueError:
             body = response.text[:2000]
-        (out / f"{name}.json").write_text(json.dumps(body, indent=1)[:400_000])
+        (out / f"{name}.json").write_text(json.dumps(body, indent=1)[:400_000], encoding="utf-8")
         return body if response.status_code < 400 else None
 
     markets = get(
@@ -135,7 +135,7 @@ def main(out: Path) -> int:
     get("perps_instruments", "GET", f"{PERPS}/v1/info/instruments")
     get("perps_tickers", "GET", f"{PERPS}/v1/info/tickers", params={"instrument_id": 1})
 
-    (out / "summary.json").write_text(json.dumps(summary, indent=1))
+    (out / "summary.json").write_text(json.dumps(summary, indent=1), encoding="utf-8")
     print(json.dumps(summary, indent=1))
     return 0
 

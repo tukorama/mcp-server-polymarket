@@ -20,7 +20,7 @@ SEEN: set[str] = set()
 
 
 def fixture(name: str) -> Any:
-    return json.loads((FIXTURES / f"{name}.json").read_text())
+    return json.loads((FIXTURES / f"{name}.json").read_text(encoding="utf-8"))
 
 
 class FakeApi:

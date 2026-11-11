@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.tukorama/mcp-server-polymarket",
   "title": "Polymarket (unofficial)",
-  "description": "Polymarket prediction markets and perps: market data, positions, accounts and gated trading. Unofficial.",
+  "description": "Polymarket predictions and perps: market data, accounts and gated trading. Unofficial.",
   "websiteUrl": "https://pypi.org/project/mcp-server-polymarket/",
   "repository": {
     "url": "https://github.com/tukorama/mcp-server-polymarket",

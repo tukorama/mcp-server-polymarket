@@ -200,7 +200,13 @@ def test_call_encoders_agree():
         (
             relayer.authorize_session_signer("0x" + "c" * 40, ADDRESS, 123),
             sdk_calls.authorize_session_signer_call(
-                wallet="0x" + "c" * 40, session_signer=ADDRESS, valid_until=123
+                wallet_address="0x" + "c" * 40, session_signer=ADDRESS, valid_until=123
+            ),
+        ),
+        (
+            relayer.revoke_session_signer("0x" + "c" * 40, ADDRESS),
+            sdk_calls.revoke_session_signer_call(
+                wallet_address="0x" + "c" * 40, session_signer=ADDRESS
             ),
         ),
     ]

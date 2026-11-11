@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 
 import pytest
 
@@ -49,7 +50,8 @@ async def test_derive_existing_clob_key(signer, api):
     request = api.calls(ep.CLOB_DERIVE_API_KEY)[0]
     typed = clob.clob_auth_typed_data(OWNER, int(request.headers["POLY_TIMESTAMP"]))
     assert eip712.recover(typed, request.headers["POLY_SIGNATURE"]) == OWNER
-    assert (store.session_file.stat().st_mode & 0o777) == 0o600
+    if os.name != "nt":  # Windows protects the file by the user profile, not POSIX bits
+        assert (store.session_file.stat().st_mode & 0o777) == 0o600
     assert "s2VjcmV0" not in json.dumps(result)
 
 
@@ -128,7 +130,7 @@ async def test_builder_key_is_written_to_a_private_file(signer, api, tmp_path):
     api.add(ep.CLOB_CREATE_BUILDER_KEY, {"key": "bk", "secret": "bs", "passphrase": "bp"})
     result = await auth_flow.create_builder_key(identity, client)
     assert "bs" not in json.dumps(result)
-    with open(result["saved_to"]) as handle:
+    with open(result["saved_to"], encoding="utf-8") as handle:
         assert json.load(handle)["secret"] == "bs"
 
 

@@ -36,7 +36,7 @@ def test_wheel_contents_and_metadata(tmp_path):
 
     # The MCP Registry checks PyPI for this line, and a release cannot be edited afterwards.
     description = metadata.get_payload()
-    manifest = json.loads((ROOT / "server.json").read_text())
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     assert f"mcp-name: {manifest['name']}" in description
     # PyPI does not rewrite relative links, so they would break on the project page.
     assert not re.findall(r"\]\((?!https?://|#)", description)
@@ -45,6 +45,6 @@ def test_wheel_contents_and_metadata(tmp_path):
 def test_versions_agree():
     pyproject = (ROOT / "pyproject.toml").read_text()
     version = re.search(r'^version = "([^"]+)"', pyproject, re.M).group(1)
-    manifest = json.loads((ROOT / "server.json").read_text())
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     assert manifest["version"] == version
     assert {package["version"] for package in manifest["packages"]} == {version}

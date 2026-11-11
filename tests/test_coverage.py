@@ -7,7 +7,9 @@ from pathlib import Path
 from mcp_server_polymarket import coverage
 from mcp_server_polymarket.client import endpoints as ep
 
-MANIFEST = json.loads((Path(__file__).parent / "fixtures" / "api_manifest.json").read_text())
+MANIFEST = json.loads(
+    (Path(__file__).parent / "fixtures" / "api_manifest.json").read_text(encoding="utf-8")
+)
 
 
 def normalize(key: str) -> str:

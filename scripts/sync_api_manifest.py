@@ -126,7 +126,7 @@ def asyncapi_channels(spec: dict[str, Any], source: str) -> list[dict[str, Any]]
 def fetch(client: httpx2.Client, url: str, local: Path | None) -> str | None:
     if local is not None:
         candidate = local / Path(urlsplit(url).path).name
-        return candidate.read_text() if candidate.exists() else None
+        return candidate.read_text(encoding="utf-8") if candidate.exists() else None
     try:
         response = client.get(url)
     except httpx2.HTTPError:
@@ -179,7 +179,7 @@ def data_api_from_pages(client: httpx2.Client, local: Path | None) -> list[dict[
         name = page.replace("/", "_") + ".md"
         if local is not None:
             path = local / name
-            text = path.read_text() if path.exists() else None
+            text = path.read_text(encoding="utf-8") if path.exists() else None
         else:
             text = fetch(client, f"{DOCS}/api-reference/{page}.md", None)
         if not text:
@@ -200,7 +200,7 @@ def main() -> int:
     manifest = build(args.local)
     text = json.dumps(manifest, indent=1) + "\n"
     if args.check:
-        current = MANIFEST.read_text() if MANIFEST.exists() else ""
+        current = MANIFEST.read_text(encoding="utf-8") if MANIFEST.exists() else ""
         old = json.loads(current) if current else {"endpoints": []}
         before = {(e["service"], e["method"], e["path"]) for e in old["endpoints"]}
         after = {(e["service"], e["method"], e["path"]) for e in manifest["endpoints"]}
@@ -209,7 +209,7 @@ def main() -> int:
         for removed in sorted(before - after):
             print("removed endpoint:", *removed)
         return 1 if before != after else 0
-    MANIFEST.write_text(text)
+    MANIFEST.write_text(text, encoding="utf-8")
     print(
         f"{len(manifest['endpoints'])} endpoints, {len(manifest['operations'])} stream operations"
     )
