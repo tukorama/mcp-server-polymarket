@@ -43,3 +43,17 @@ def test_the_tables_do_not_overlap_or_go_stale():
     stale = sorted(set(keys) - published())
     assert not stale, "Excused endpoints that are no longer published:\n" + "\n".join(stale)
     assert not (set(coverage.EXTRA) - implemented()), "EXTRA lists endpoints nothing calls"
+
+
+def test_tool_count_stays_within_provider_limits():
+    # Several LLM providers cap a request at 128 tools, and `all` exposes every one.
+    from mcp_server_polymarket.capabilities import REQUIREMENTS as needs
+    from mcp_server_polymarket.capabilities import Capabilities, parse_toolsets
+    from mcp_server_polymarket.ops import OPERATIONS, enabled_operations
+
+    everything = Capabilities(
+        toolsets=parse_toolsets("all"),
+        have=frozenset(needs),
+        gates=frozenset({"cancel", "trading", "transfers"}),
+    )
+    assert len(enabled_operations(everything)) == len(OPERATIONS) == 128

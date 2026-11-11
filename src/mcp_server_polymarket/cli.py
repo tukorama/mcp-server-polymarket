@@ -46,6 +46,9 @@ def _parser() -> argparse.ArgumentParser:
     logout.add_argument(
         "--revoke", action="store_true", help="also delete the CLOB API key at Polymarket"
     )
+    logout.add_argument(
+        "--builder-key", action="store_true", help="revoke the builder API key at Polymarket"
+    )
 
     commands.add_parser("status", help="show credentials, gates and hidden tools")
     commands.add_parser("tools", help="list the tools this configuration exposes")

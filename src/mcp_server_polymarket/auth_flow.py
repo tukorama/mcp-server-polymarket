@@ -219,6 +219,17 @@ async def create_builder_key(identity: Identity, client: ApiClient) -> dict[str,
     }
 
 
+async def revoke_builder_key(identity: Identity, client: ApiClient) -> dict[str, Any]:
+    """Delete the builder API key at Polymarket, and the file `auth --builder-key` wrote."""
+    if identity.clob_credentials() is None:
+        raise ConfigError("Run `mcp-server-polymarket auth` first; builder keys need CLOB auth.")
+    await client.json(ep.CLOB_REVOKE_BUILDER_KEY)
+    path = config_dir() / "builder_key.json"
+    removed = path.exists()
+    path.unlink(missing_ok=True)
+    return {"status": "revoked", "removed_file": str(path) if removed else None}
+
+
 async def logout(args: argparse.Namespace, settings: Settings) -> int:
     settings.register_secrets()
     store = CredentialStore(settings.resolved_session_file, settings.resolved_perps_session_file)
@@ -236,6 +247,13 @@ async def logout(args: argparse.Namespace, settings: Settings) -> int:
         print(json.dumps({"status": "revoked", "proxy": session.proxy}))
         return 0
     identity = Identity(settings, store)
+    if getattr(args, "builder_key", False):
+        client = ApiClient(settings, identity)
+        try:
+            print(json.dumps(await revoke_builder_key(identity, client)))
+        finally:
+            await client.aclose()
+        return 0
     address = identity.clob_address
     if address is None:
         raise ConfigError("No signer is configured, so there is nothing to log out.")

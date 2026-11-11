@@ -146,3 +146,34 @@ async def test_logout_revokes_perps_with_the_owner_key(signer, api, tmp_path):
         perps.delete_proxy(SESSION_KEY), salt=body["salt"], ts_ms=body["ts"]
     )
     assert eip712.recover(typed, body["sig"]) == OWNER
+
+
+async def test_builder_key_revocation_removes_the_file(signer, api):
+    from mcp_server_polymarket.client.session import ClobCredentials
+
+    identity, client, store = parts(signer, api)
+    store.save_clob(ClobCredentials(OWNER, "k", "c2VjcmV0", "p"))
+    api.add(ep.CLOB_CREATE_BUILDER_KEY, {"key": "bk", "secret": "bs", "passphrase": "bp"})
+    api.add(ep.CLOB_REVOKE_BUILDER_KEY, None)
+    saved = (await auth_flow.create_builder_key(identity, client))["saved_to"]
+    result = await auth_flow.revoke_builder_key(identity, client)
+    assert result["removed_file"] == saved
+    assert len(api.calls(ep.CLOB_REVOKE_BUILDER_KEY)) == 1
+
+
+async def test_logout_revoke_deletes_the_clob_key(signer, api, monkeypatch, capsys):
+    from mcp_server_polymarket.client.session import ClobCredentials
+
+    store = CredentialStore(signer.resolved_session_file, signer.resolved_perps_session_file)
+    store.save_clob(ClobCredentials(OWNER, "k", "c2VjcmV0", "p"))
+    api.add(ep.CLOB_DELETE_API_KEY, None)
+    original = ApiClient.__init__
+
+    def with_fake(self, settings, identity, **kwargs):
+        original(self, settings, identity, transport=api.transport)
+
+    monkeypatch.setattr(ApiClient, "__init__", with_fake)
+    assert await auth_flow.logout(args(revoke=True), signer) == 0
+    assert json.loads(capsys.readouterr().out) == {"status": "forgotten", "revoked": True}
+    assert len(api.calls(ep.CLOB_DELETE_API_KEY)) == 1
+    assert store.load_clob(OWNER) is None

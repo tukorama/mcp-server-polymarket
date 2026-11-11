@@ -45,5 +45,6 @@ def test_stdout_is_only_json_rpc_with_the_inherited_env_allowlist(tmp_path):
     assert all(frame["jsonrpc"] == "2.0" for frame in frames)
     assert remainder.strip() == ""
     tools = frames[1]["result"]["tools"]
-    assert {tool["name"] for tool in tools} >= {"search", "get_service_status"}
+    assert {"search", "get_service_status"} <= {tool["name"] for tool in tools}
+    assert len(tools) == 49, "the default tools without credentials"
     assert frames[0]["result"]["serverInfo"]["name"] == "mcp-server-polymarket"
