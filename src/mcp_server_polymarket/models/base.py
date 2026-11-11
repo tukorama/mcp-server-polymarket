@@ -59,6 +59,14 @@ class WriteResult(CompactModel):
 # Converters shared by the models.
 
 
+def as_dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def as_list(value: Any) -> list[Any]:
+    return value if isinstance(value, list) else []
+
+
 def as_float(value: Any) -> float | None:
     if value is None or value == "":
         return None

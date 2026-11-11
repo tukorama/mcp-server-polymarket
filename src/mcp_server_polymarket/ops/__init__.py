@@ -1,4 +1,11 @@
-from mcp_server_polymarket.ops import system  # noqa: F401
+from mcp_server_polymarket.ops import (  # noqa: F401
+    analytics,
+    discovery,
+    docs,
+    market_data,
+    perps_market,
+    system,
+)
 from mcp_server_polymarket.ops.registry import (
     OPERATIONS,
     Call,

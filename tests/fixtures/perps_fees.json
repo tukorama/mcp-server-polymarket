@@ -1,0 +1,1 @@
+{"fee_schedule":[{"instrument_type":"perpetual","category":"equity","taker_fee_rate":"0.0004","maker_fee_rate":"0.000125","tiers":[{"min_volume_30d":"0","taker_fee_rate":"0.0004","maker_fee_rate":"0.000125"},{"min_volume_30d":"1000000","taker_fee_rate":"0.00037","maker_fee_rate":"0.0001"}]}]}

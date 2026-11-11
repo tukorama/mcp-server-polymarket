@@ -206,6 +206,13 @@ RELAYER_DEPLOYED = _e(S.RELAYER, "GET", "/deployed")
 RELAYER_API_KEYS = _e(S.RELAYER, "GET", "/relayer/api/keys", A.RELAYER)
 RELAYER_TX_PARAMS = _e(S.RELAYER, "GET", "/v1/account/transactions/params", A.RELAYER)
 RELAYER_TX = _e(S.RELAYER, "GET", "/v1/account/transactions/{id}", A.RELAYER)
+# Session keys are authorised with an Idempotency-Key, so a retry cannot apply twice.
+RELAYER_SESSION_AUTHORIZE = _e(
+    S.RELAYER, "POST", "/v1/session-signers/authorizations", A.RELAYER, retry_safe=True
+)
+RELAYER_SESSION_REVOKE = _e(
+    S.RELAYER, "POST", "/v1/session-signers/revocations", A.RELAYER, retry_safe=True
+)
 
 # Bridge: deposits and withdrawals from other chains. Public.
 BRIDGE_ASSETS = _e(S.BRIDGE, "GET", "/supported-assets")
