@@ -4,6 +4,7 @@ import asyncio
 import logging
 import re
 import time
+import weakref
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -29,7 +30,9 @@ _NONCE_MISMATCH = re.compile(r"batch nonce\s+(\d+)\s+does not match on-chain non
 # One lock per wallet and event loop: asyncio locks belong to the loop that uses them, and the
 # LangGraph integration runs a loop per bridge. Across loops the relayer's nonce check (and the
 # re-sign on a mismatch) keeps batches apart.
-_locks: dict[tuple[int, str], asyncio.Lock] = {}
+_locks: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, dict[str, asyncio.Lock]]" = (
+    weakref.WeakKeyDictionary()
+)
 _sleep = asyncio.sleep
 _now = time.time
 _monotonic = time.monotonic
@@ -131,8 +134,9 @@ async def sign_batch(
 
 def wallet_lock(wallet: str) -> asyncio.Lock:
     """The lock that keeps this wallet's batches, which share a nonce, one at a time."""
-    key = (id(asyncio.get_running_loop()), wallet.lower())
-    return _locks.setdefault(key, asyncio.Lock())
+    # Keyed by the loop object, not id(): a new loop can reuse a finished loop's id.
+    per_loop = _locks.setdefault(asyncio.get_running_loop(), {})
+    return per_loop.setdefault(wallet.lower(), asyncio.Lock())
 
 
 async def submit(
