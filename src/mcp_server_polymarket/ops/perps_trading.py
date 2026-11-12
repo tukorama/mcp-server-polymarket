@@ -9,7 +9,7 @@ import time
 from decimal import Decimal, InvalidOperation
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from mcp_server_polymarket import safety, wallet_tx
 from mcp_server_polymarket.client import endpoints as ep
@@ -43,12 +43,12 @@ def _decimal(value: str | None, what: str) -> Decimal | None:
     return number
 
 
-def _check_number(value: Decimal, decimals: int | None, what: str) -> None:
+def _check_number(value: Decimal, decimals: int | None, what: str, *, price: bool = False) -> None:
     places = max(0, -int(value.normalize().as_tuple().exponent))  # type: ignore[arg-type]
     if decimals is not None and places > decimals:
         raise InvalidRequest(f"{what} {value} has more than {decimals} decimals for this market.")
-    digits = len(value.normalize().as_tuple().digits)
-    if digits > 5:
+    # The exchange limits prices to 5 significant figures, except whole-number prices.
+    if price and places > 0 and len(value.normalize().as_tuple().digits) > 5:
         raise InvalidRequest(f"{what} {value} has more than 5 significant figures.")
 
 
@@ -143,6 +143,9 @@ def _outcome(data: Any) -> PerpsResult:
 
 
 class Trigger(BaseModel):
+    # A misspelled field must fail, not silently become its default (reduceOnly -> False).
+    model_config = ConfigDict(extra="forbid")
+
     trigger_price: Amount
     limit_price: Annotated[
         Amount | None, Field(description="Empty: execute at market when triggered.")
@@ -150,11 +153,17 @@ class Trigger(BaseModel):
 
 
 class PerpsOrderSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     instrument_id: int
     side: Literal["BUY", "SELL"]
     quantity: Amount
     price: Annotated[
-        Amount | None, Field(description="Limit price. Empty only for ioc or fok at market.")
+        Amount | None,
+        Field(
+            description="Limit price; required. For ioc or fok it is the worst price to trade "
+            "at, so an order cannot sweep a thin book."
+        ),
     ] = None
     time_in_force: Literal["gtc", "ioc", "fok"] = "gtc"
     post_only: bool = False
@@ -180,24 +189,19 @@ async def _rows(call: Call, specs: list[PerpsOrderSpec]) -> tuple[list[Any], Dec
         price = _decimal(spec.price, "price")
         assert quantity is not None
         _check_number(quantity, info.get("quantity_decimals"), "quantity")
-        if price is not None:
-            _check_number(price, info.get("price_decimals"), "price")
-        elif spec.time_in_force == "gtc":
-            raise InvalidRequest("A gtc order needs a price; use ioc or fok to trade at market.")
+        if price is None:
+            raise InvalidRequest(
+                "Every order needs a price: for ioc or fok it is the worst price to trade at.",
+                hint="Use get_perps_book or get_perps_tickers to pick one near the mark.",
+            )
+        _check_number(price, info.get("price_decimals"), "price", price=True)
         mark = await mark_of(call, spec.instrument_id)
         side = spec.side
         if price is not None:
             safety.check_deviation(
                 price, mark, side, "Price", relative=True, limit=settings.max_price_deviation
             )
-        reference = max(price or 0, mark or 0)
-        if not reference and not spec.reduce_only:
-            raise Refused(
-                f"No mark price for {info.get('symbol')}, so this order's value cannot be checked "
-                "against the limits.",
-                hint="Give a limit price.",
-            )
-        notional = quantity * Decimal(reference)
+        notional = quantity * max(price, mark or Decimal(0))
         minimum = _decimal(info.get("min_notional"), "min_notional")
         if minimum is not None and notional and notional < minimum and not spec.reduce_only:
             raise InvalidRequest(f"Order value ${notional:.2f} is below the ${minimum} minimum.")
@@ -235,7 +239,7 @@ async def _rows(call: Call, specs: list[PerpsOrderSpec]) -> tuple[list[Any], Dec
             ):
                 number = _decimal(value, what)
                 if number is not None:
-                    _check_number(number, info.get("price_decimals"), what)
+                    _check_number(number, info.get("price_decimals"), what, price=True)
             rows.append(
                 perps.order_row(
                     perps.PerpsOrder(
@@ -258,9 +262,19 @@ async def _describe_orders(call: Call, orders: list[Any], dry_run: bool = False)
     specs = [
         o if isinstance(o, PerpsOrderSpec) else PerpsOrderSpec.model_validate(o) for o in orders
     ]
-    _, total, lines = await _rows(call, specs)
+    _, _, lines = await _rows(call, specs)
+    # Valued at the given prices only: the question must read the same when it is asked again
+    # (input_required elicitation compares the text), and the mark moves between the two.
+    at_price = sum(
+        (
+            (_decimal(o.quantity, "quantity") or Decimal(0)) * (_decimal(o.price, "price") or 0)
+            for o in specs
+            if not o.reduce_only
+        ),
+        Decimal(0),
+    )
     return (
-        f"Place these Perps orders (about ${total:.2f} of exposure):\n- "
+        f"Place these Perps orders (about ${at_price:.2f} at the limit prices):\n- "
         + "\n- ".join(lines)
         + "\nSend them?"
     )
@@ -319,24 +333,25 @@ async def place_perps_orders(
 
 
 class Modification(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     order_id: int | None = None
     client_order_id: COID | None = None
     price: Amount
     quantity: Annotated[Amount, Field(description="The new total quantity.")]
 
 
-async def _modified(call: Call, changes: list[Modification]) -> tuple[Decimal, Decimal, list[str]]:
+async def _modified(call: Call, changes: list[Modification]) -> tuple[Decimal, list[str]]:
     """Check each change like a new order, against the resting order it changes.
 
-    Returns the exposure the changed orders add up to, how much of it is new (for the daily
-    limit, which already counted the original orders), and a line per change.
+    Returns the exposure the changed orders add up to, and a line per change.
     """
     body = await call.json(ep.PERPS_OPEN_ORDERS)
     if isinstance(body, dict):
         body = next((v for v in body.values() if isinstance(v, list)), [])
     resting = [o for o in body or [] if isinstance(o, dict)]
     settings = call.settings
-    total = added = Decimal(0)
+    total = Decimal(0)
     lines = []
     for change in changes:
         order = next(
@@ -358,7 +373,7 @@ async def _modified(call: Call, changes: list[Modification]) -> tuple[Decimal, D
         info = await instrument(call, order["instrument_id"])
         price, quantity = _decimal(change.price, "price"), _decimal(change.quantity, "quantity")
         assert price is not None and quantity is not None
-        _check_number(price, info.get("price_decimals"), "price")
+        _check_number(price, info.get("price_decimals"), "price", price=True)
         _check_number(quantity, info.get("quantity_decimals"), "quantity")
         side = "BUY" if order.get("buy") else "SELL"
         mark = await mark_of(call, order["instrument_id"])
@@ -367,23 +382,20 @@ async def _modified(call: Call, changes: list[Modification]) -> tuple[Decimal, D
         )
         if not order.get("ro"):
             value = quantity * max(price, mark or Decimal(0))
-            old_price = _decimal(order.get("price"), "price") or Decimal(0)
-            old_quantity = _decimal(order.get("quantity"), "quantity") or Decimal(0)
-            old = old_quantity * max(old_price, mark or Decimal(0))
             total += value
-            added += max(Decimal(0), value - old)
         lines.append(
             f"order {name} ({side} {info.get('symbol')}): price {order.get('price')} -> {price}, "
             f"quantity {order.get('quantity')} -> {quantity}"
         )
-    return total, added, lines
+    return total, lines
 
 
 async def _describe_modify(call: Call, changes: list[Any], dry_run: bool = False) -> str:
     items = [c if isinstance(c, Modification) else Modification.model_validate(c) for c in changes]
-    total, _, lines = await _modified(call, items)
+    _, lines = await _modified(call, items)
+    at_price = sum((Decimal(c.quantity) * Decimal(c.price) for c in items), Decimal(0))
     return (
-        f"Change these Perps orders (about ${total:.2f} of exposure afterwards)?\n- "
+        f"Change these Perps orders (about ${at_price:.2f} at the new prices)?\n- "
         + "\n- ".join(lines)
     )
 
@@ -416,7 +428,7 @@ async def modify_perps_orders(
     else:
         op = perps.modify_orders_coid([(c.client_order_id, c.price, c.quantity) for c in by_coid])  # type: ignore[misc]
         endpoint = ep.PERPS_MODIFY_ORDERS_COID
-    total, added, lines = await _modified(call, changes)
+    total, lines = await _modified(call, changes)
     if dry_run:
         return PerpsResult(
             status="preview",
@@ -428,7 +440,8 @@ async def modify_perps_orders(
     safety.check_limit(
         settings.max_perps_order_usd, total, "This change", "POLYMARKET_MAX_PERPS_ORDER_USD"
     )
-    safety.check_daily(call, added, "perps")
+    # The full new value counts: the resting order may not have been placed through this server.
+    safety.check_daily(call, total, "perps")
     print_ = safety.fingerprint("perps-modify", [c.model_dump() for c in changes])
     data, unknown = await send_op(
         call,
@@ -437,7 +450,7 @@ async def modify_perps_orders(
         op=op,
         key=proxy_key(call),
         summary="; ".join(lines),
-        usd=added,
+        usd=total,
         print_=print_,
     )
     return PerpsResult(**unknown.model_dump()) if unknown else _outcome(data)
@@ -537,6 +550,8 @@ async def set_perps_auto_cancel(
 
 
 class LeverageChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     instrument_id: int
     leverage: Annotated[int, Field(ge=1)]
     cross_margin: Annotated[bool, Field(description="false: isolated margin.")] = True

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from mcp_server_polymarket import safety
 from mcp_server_polymarket.client import endpoints as ep
@@ -510,6 +510,8 @@ async def place_market_order(
 
 
 class LimitOrderSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     token_id: str
     side: Side
     price: Price

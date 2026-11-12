@@ -30,9 +30,9 @@ the question for trading, never for transfers. `dry_run=true` previews without a
 | `POLYMARKET_MAX_PERPS_ORDER_USD` | 500 per Perps order |
 | `POLYMARKET_MAX_PERPS_LEVERAGE` | 5 |
 | `POLYMARKET_MAX_TRANSFER_USD` | 100 per transfer |
-| `POLYMARKET_MAX_PRICE_DEVIATION` | 0.10 from the book or mark |
+| `POLYMARKET_MAX_PRICE_DEVIATION` | 0.10: pUSD through the book for prediction markets, 10% of the mark for Perps |
 
-`0` blocks, `unlimited` lifts a limit.
+`0` blocks, `unlimited` lifts a limit; any other word is an error.
 
 ## Recipients
 

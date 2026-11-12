@@ -33,8 +33,6 @@ from mcp_server_polymarket.server import detect_capabilities
 
 T = TypeVar("T")
 
-DECLINED = "The user did not confirm, so nothing was sent."
-
 
 def agent_prompt(caps: Capabilities) -> str:
     return knowledge.agent_guide(caps.toolsets, gated=bool(caps.gates))
@@ -113,11 +111,10 @@ def approved(answer: Any) -> bool:
 
 
 def _declined(op: Operation) -> Any:
+    from mcp_server_polymarket.tools import _declined as declined_result
+
     result_type = typing.get_type_hints(op.fn).get("return", WriteResult)
-    result = cast(type[WriteResult], result_type)(
-        status="declined", message=DECLINED, next_step="Do not retry unless the user asks again."
-    )
-    return result.model_dump(mode="json")
+    return declined_result(cast(type[WriteResult], result_type)).model_dump(mode="json")
 
 
 def _approval(op: Operation, text: str) -> dict[str, Any]:

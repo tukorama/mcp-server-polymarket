@@ -133,11 +133,14 @@ async def test_combo_sells_count_toward_the_limits(user, api):
 # Perps
 
 
-async def test_perps_market_order_without_a_mark_is_refused(user, api):
-    api.add(ep.PERPS_TICKERS, [])
+async def test_perps_orders_always_need_a_price(user, api):
+    # An ioc or fok order without a price could sweep a thin book unchecked.
     spec = {"instrument_id": 1, "side": "BUY", "quantity": "1", "time_in_force": "ioc"}
     async with asking(user, api) as client:
-        assert "No mark price" in await error(client, "place_perps_orders", orders=[spec])
+        assert "needs a price" in await error(client, "place_perps_orders", orders=[spec])
+        misspelled = {**spec, "price": "7600", "reduceOnly": True}
+        result = await client.call_tool("place_perps_orders", {"orders": [misspelled]})
+        assert result.is_error, "an unknown field must not silently become its default"
     assert api.calls(ep.PERPS_CREATE_ORDERS) == []
 
 
@@ -432,7 +435,7 @@ async def test_combo_sells_are_checked_at_what_the_signed_order_receives(user, a
     assert data["status"] == "declined" and "above the limit" in data["message"]
 
 
-async def test_modifications_name_one_order_and_charge_only_the_increase(user, api):
+async def test_modifications_name_one_order_and_count_in_full(user, api):
     user.max_daily_usd = "100"
     resting = {"order_id": 5, "instrument_id": 1, "buy": True, "price": "7590", "quantity": "0.01"}
     api.add(ep.PERPS_OPEN_ORDERS, [resting])
@@ -440,7 +443,8 @@ async def test_modifications_name_one_order_and_charge_only_the_increase(user, a
     both = {"order_id": 5, "client_order_id": "c" * 32, "price": "7590", "quantity": "0.01"}
     async with asking(user, api) as client:
         assert "Give each change" in await error(client, "modify_perps_orders", changes=[both])
-        # Repricing the same quantity adds no exposure, so it can be repeated freely.
-        for price in ("7591", "7592", "7593"):
-            change = {"order_id": 5, "price": price, "quantity": "0.01"}
-            await call(client, "modify_perps_orders", changes=[change])
+        change = {"order_id": 5, "price": "7591", "quantity": "0.01"}
+        await call(client, "modify_perps_orders", changes=[change])
+        # The resting order may not have been placed here, so each change counts in full.
+        change = {"order_id": 5, "price": "7592", "quantity": "0.01"}
+        assert "daily limit" in await error(client, "modify_perps_orders", changes=[change])

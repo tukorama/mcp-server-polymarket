@@ -131,8 +131,8 @@ async def get_bridge_status(
 
 class BridgeAddresses(WriteResult):
     status: str = "created"
-    for_wallet: str
-    addresses: dict[str, Any]
+    for_wallet: str | None = None
+    addresses: dict[str, Any] = {}
     note: str | None = None
 
 

@@ -26,7 +26,10 @@ logger = logging.getLogger(__name__)
 DEADLINE_SECONDS = 600
 TERMINAL = {"STATE_CONFIRMED", "STATE_FAILED", "STATE_INVALID"}
 _NONCE_MISMATCH = re.compile(r"batch nonce\s+(\d+)\s+does not match on-chain nonce\s+(\d+)", re.I)
-_locks: dict[str, asyncio.Lock] = {}
+# One lock per wallet and event loop: asyncio locks belong to the loop that uses them, and the
+# LangGraph integration runs a loop per bridge. Across loops the relayer's nonce check (and the
+# re-sign on a mismatch) keeps batches apart.
+_locks: dict[tuple[int, str], asyncio.Lock] = {}
 _sleep = asyncio.sleep
 _now = time.time
 _monotonic = time.monotonic
@@ -126,6 +129,12 @@ async def sign_batch(
     }
 
 
+def wallet_lock(wallet: str) -> asyncio.Lock:
+    """The lock that keeps this wallet's batches, which share a nonce, one at a time."""
+    key = (id(asyncio.get_running_loop()), wallet.lower())
+    return _locks.setdefault(key, asyncio.Lock())
+
+
 async def submit(
     client: ApiClient,
     identity: Identity,
@@ -145,8 +154,7 @@ async def submit(
     from mcp_server_polymarket.signing import relayer
 
     _, _, wallet = require_deposit_wallet(identity)
-    lock = _locks.setdefault(wallet.lower(), asyncio.Lock())
-    async with lock:
+    async with wallet_lock(wallet):
         signed = await sign_batch(client, identity, calls, deadline=deadline)
         body = relayer.batch_wire(calls=calls, metadata=metadata, **signed)
         outcome = await _post(client, body, deadline, record)

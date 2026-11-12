@@ -176,7 +176,11 @@ async def _describe_blp(call: Call, instrument_id: int, active: bool) -> str:
 async def set_perps_blp_enrollment(call: Call, instrument_id: int, active: bool) -> WriteResult:
     """For enrolled backstop liquidity providers: take over liquidations on an instrument, or
     stop. Subscribing fixes leverage there at 3x."""
+    from mcp_server_polymarket.ops.perps_trading import _rejected
+
     data = await call.json(
         ep.PERPS_BLP_ENROLL, body={"instrument_id": instrument_id, "active": active}
     )
+    if _rejected(data):
+        return WriteResult(status="rejected", message=str(data.get("error")), raw=data)
     return WriteResult(status="done", raw=perps_slim(data) if isinstance(data, dict) else data)

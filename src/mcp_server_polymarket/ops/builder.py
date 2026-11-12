@@ -145,7 +145,7 @@ async def get_my_perps_builder(
         body = await call.json(
             ep.PERPS_BUILDER_APPROVALS, params={"builder": builder} if builder else None
         )
-        rows_ = body if isinstance(body, list) else (body or {}).get("approvals") or []
+        rows_ = _approval_rows(body)
         return PerpsBuilder(approvals=[Raw.model_validate(perps_slim(r)) for r in rows_])
     window = {"start_timestamp": epoch_ms(start), "end_timestamp": epoch_ms(end)}
     params: dict[str, Any] = {k: v for k, v in window.items() if v}
@@ -159,6 +159,19 @@ async def get_my_perps_builder(
         earnings=[Raw.model_validate(perps_slim(r)) for r in body.get("data") or []],
         next_cursor=body.get("cursor") or None,
     )
+
+
+def _approval_rows(body: Any) -> list[dict[str, Any]]:
+    """GET /v1/account/builder-approvals wraps its rows in `data`."""
+    if isinstance(body, dict):
+        body = body.get("data") if "data" in body else body.get("approvals")
+    return [r for r in body or [] if isinstance(r, dict)]
+
+
+def _perps_rejected(data: Any) -> bool:
+    from mcp_server_polymarket.ops.perps_trading import _rejected
+
+    return _rejected(data)
 
 
 async def _describe_builder_fee(call: Call, max_fee_rate: str) -> str:
@@ -199,8 +212,7 @@ async def set_perps_builder_approval(
         raise InvalidRequest("Builder fees are capped at 0.001.")
     key, _ = owner_key(call)
     current = await call.json(ep.PERPS_BUILDER_APPROVALS, params={"builder": builder})
-    rows = current if isinstance(current, list) else (current or {}).get("approvals") or []
-    versions = [int(r.get("approval_version", 0)) for r in rows if isinstance(r, dict)]
+    versions = [int(r.get("approval_version", 0)) for r in _approval_rows(current)]
     op = approve_builder(builder, max_fee_rate, max(versions, default=0) + 1)
     body = signed_request(key, op, salt=secrets.randbits(32), ts_ms=int(time.time() * 1000))
     data, unknown = await safety.send_write(
@@ -211,5 +223,10 @@ async def set_perps_builder_approval(
         summary=f"builder {builder} fee {max_fee_rate}",
         usd=None,
         print_=None,
+        rejected=_perps_rejected,
     )
-    return unknown or WriteResult(status="done", raw=perps_slim(data))
+    if unknown:
+        return unknown
+    if _perps_rejected(data):
+        return WriteResult(status="rejected", message=str(data.get("error")), raw=data)
+    return WriteResult(status="done", raw=perps_slim(data))

@@ -40,6 +40,20 @@ SERVICE_URLS = {
 # be able to redirect credentials, switch on money-moving tools or loosen the limits.
 _NOT_FROM_DOTENV = {
     *SERVICE_URLS,
+    "private_key",
+    "private_key_file",
+    "wallet_address",
+    "signature_type",
+    "signer_role",
+    "api_key",
+    "api_secret",
+    "api_passphrase",
+    "address",
+    "relayer_api_key",
+    "relayer_api_key_address",
+    "perps_proxy",
+    "perps_secret",
+    "perps_proxy_key",
     "allow_cancel",
     "allow_trading",
     "allow_transfers",
@@ -95,12 +109,15 @@ class _RestrictedDotEnv(PydanticBaseSettingsSource):
 
 
 def _limit(value: Any) -> Any:
-    if isinstance(value, str) and value.strip().lower() in ("unlimited", "none", "off"):
+    # Only the literal word lifts a limit: "off" or "none" could as well mean "switched off".
+    if isinstance(value, str) and value.strip().lower() == "unlimited":
         return "unlimited"
     try:
-        number = Decimal(str(value))
+        number = Decimal(str(value).strip())
     except InvalidOperation as exc:
-        raise ValueError("expected a number or 'unlimited'") from exc
+        raise ValueError("expected a number, 0 to block, or 'unlimited'") from exc
+    if not number.is_finite():
+        raise ValueError("expected a number, 0 to block, or 'unlimited'")
     if number < 0:
         raise ValueError("must not be negative")
     return number

@@ -25,8 +25,9 @@ positions with entry, mark, liquidation price and unrealised PnL.
 `place_perps_orders` takes a list of orders:
 
 - `side` BUY (long) or SELL (short), `quantity` in the instrument's base unit, `price`.
-- `time_in_force`: `gtc` rests on the book; `ioc` and `fok` trade now, and may omit `price` to
-  trade at market.
+- `time_in_force`: `gtc` rests on the book; `ioc` and `fok` trade now. Every order needs a
+  `price`: for `ioc` and `fok` it is the worst price to trade at, so an order cannot sweep a thin
+  book. It must be within `POLYMARKET_MAX_PRICE_DEVIATION` (10%) of the mark.
 - `post_only`, `reduce_only` (only shrinks a position; exempt from the USD limit).
 - `take_profit` / `stop_loss` with a `trigger_price` and optional `limit_price` attach reduce-only exit
   orders that trigger at that price.

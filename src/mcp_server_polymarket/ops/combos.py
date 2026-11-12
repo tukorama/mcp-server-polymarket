@@ -1,6 +1,5 @@
 """Combos: positions on several outcomes at once, priced by request for quote."""
 
-import asyncio
 from decimal import Decimal
 from typing import Annotated, Any, Literal
 
@@ -380,8 +379,7 @@ async def execute_collateral_return(
     print_ = safety.fingerprint("collateral-return", wallet, plan_hash)
     safety.block_duplicate(call, print_)
     # Same lock as other Deposit Wallet batches: they share the wallet's nonce.
-    lock = wallet_tx._locks.setdefault(str(wallet).lower(), asyncio.Lock())
-    async with lock:
+    async with wallet_tx.wallet_lock(str(wallet)):
         signed = await wallet_tx.sign_batch(
             call.client, call.identity, calls, deadline=call.deadline
         )

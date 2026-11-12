@@ -280,7 +280,9 @@ class ApiClient:
                     clamp(retry_after, 0.5, 15) if retry_after else backoff(server_failures)
                 )
                 continue
-            if status >= 400 and status not in expect:
+            # Redirects are not followed, so a 3xx means the request did not do its job; for a
+            # write that is an unknown outcome, never a success.
+            if status >= 300 and status not in expect:
                 self._raise_for_status(label, response, endpoint)
             return response
 

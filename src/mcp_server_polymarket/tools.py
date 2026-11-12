@@ -116,6 +116,14 @@ def _resolver(op: Operation, arg_names: list[str]) -> Any:
     return ask
 
 
+def _declined(result_type: type[WriteResult]) -> WriteResult:
+    return result_type(
+        status="declined",
+        message="The user did not confirm, so nothing was sent.",
+        next_step="Do not retry unless the user asks again.",
+    )
+
+
 def tool_function(op: Operation) -> Any:
     """The MCP-facing function: the operation's parameters, minus `call`, plus `ctx`."""
     signature = inspect.signature(op.fn, eval_str=True)
@@ -132,6 +140,12 @@ def tool_function(op: Operation) -> Any:
         returns = hints.get("return")
         if not (isinstance(returns, type) and issubclass(returns, WriteResult)):
             raise TypeError(f"{op.name} needs confirmation, so it must return a WriteResult")
+        try:
+            _declined(returns)
+        except ValueError as exc:  # pydantic's ValidationError
+            raise TypeError(
+                f"{op.name}'s result must be buildable from a status alone, for a declined call"
+            ) from exc
         confirmed = Annotated[ElicitationResult[Confirmation], Resolve(_resolver(op, names))]
         extra.append(
             inspect.Parameter("confirmation", inspect.Parameter.KEYWORD_ONLY, annotation=confirmed)
@@ -142,12 +156,7 @@ def tool_function(op: Operation) -> Any:
         if op.needs_confirmation:
             accepted = isinstance(confirmation, AcceptedElicitation) and confirmation.data.confirm
             if not accepted:
-                result_type = cast(type[WriteResult], hints["return"])
-                return result_type(
-                    status="declined",
-                    message="The user did not confirm, so nothing was sent.",
-                    next_step="Do not retry unless the user asks again.",
-                )
+                return _declined(cast(type[WriteResult], hints["return"]))
         return await _invoke(op, ctx, kwargs)
 
     annotations["return"] = hints.get("return", Any)

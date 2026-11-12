@@ -7,7 +7,7 @@ The limits come from the real environment only (never .env). `0` blocks a kind o
 import hashlib
 import time
 from collections.abc import Callable
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from mcp_server_polymarket.client import endpoints as ep
@@ -111,15 +111,36 @@ async def check_geoblock(call: Call) -> None:
         )
 
 
+def _canonical(value: Any) -> Any:
+    """Equal values must fingerprint alike: 10 and 10.0, or an address in any letter case."""
+    if isinstance(value, Decimal | int | float) and not isinstance(value, bool):
+        number = Decimal(str(value)).normalize()
+        return format(number, "f")
+    if isinstance(value, str):
+        text = value.strip()
+        if text.lower().startswith("0x"):
+            return text.lower()
+        try:
+            return format(Decimal(text).normalize(), "f")
+        except InvalidOperation:
+            return text
+    if isinstance(value, dict):
+        return {str(k): _canonical(v) for k, v in sorted(value.items(), key=lambda kv: str(kv[0]))}
+    if isinstance(value, list | tuple):
+        return [_canonical(v) for v in value]
+    return value
+
+
 def fingerprint(*parts: Any) -> str:
-    return hashlib.sha256(repr(parts).encode()).hexdigest()[:32]
+    return hashlib.sha256(repr(_canonical(list(parts))).encode()).hexdigest()[:32]
 
 
 def block_duplicate(call: Call, print_: str) -> None:
     previous = call.runtime.journal.pending_duplicate(print_)
     if previous is not None:
+        state = "is still being sent" if previous.status == "pending" else "has an unknown outcome"
         raise Refused(
-            f"An identical write ({previous.id}) has an unknown outcome.",
+            f"An identical write ({previous.id}) {state}.",
             hint=f"Check its result first, or send exactly the same request again with "
             f"resend_write(request_id='{previous.id}').",
         )

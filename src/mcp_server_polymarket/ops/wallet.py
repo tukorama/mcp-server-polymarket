@@ -73,7 +73,8 @@ def _targets(market: MarketContext) -> tuple[str, str]:
     if market.v2:
         return w.ROUTER_V2, w.POSITION_MANAGER
     if market.neg_risk:
-        return w.NEG_RISK_COLLATERAL_ADAPTER, w.NEG_RISK_ADAPTER
+        # Neg-risk CTF positions still live on Conditional Tokens; only the adapter differs.
+        return w.NEG_RISK_COLLATERAL_ADAPTER, w.CONDITIONAL_TOKENS
     return w.COLLATERAL_ADAPTER, w.CONDITIONAL_TOKENS
 
 

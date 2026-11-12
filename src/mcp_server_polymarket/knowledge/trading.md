@@ -22,8 +22,8 @@ conversation.
 | `cancel_orders` / `cancel_all_orders` | Cancel by id, by market or token, or everything. Safe to repeat. |
 
 Prices must be on the market's tick: an off-tick price is refused, never rounded. A price far
-from the book (more than `POLYMARKET_MAX_PRICE_DEVIATION`, 10% by default) is refused as a likely
-mistake.
+through the book (more than `POLYMARKET_MAX_PRICE_DEVIATION` pUSD, 0.10 by default, above the best
+ask for a BUY or below the best bid for a SELL) is refused as a likely mistake.
 
 ## Results
 

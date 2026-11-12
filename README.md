@@ -331,9 +331,11 @@ payload is undocumented. The separate Polymarket US exchange is not covered.
 ## Configuration
 
 All settings are environment variables with the `POLYMARKET_` prefix. A `.env` file in the
-working directory also works, except for the gates, limits, confirmation mode, allowlist, builder
-settings, service URLs, file paths and the bearer token, which have to be set in the real
-environment so that a file in a project directory cannot turn trading on.
+working directory can set only the harmless ones (`TOOLSETS`, `HTTP_TIMEOUT`, `LOG_LEVEL`).
+Keys, wallet, credentials, gates, limits, confirmation mode, allowlist, builder settings, service
+URLs, file paths and the bearer token have to be set in the real environment (for example the
+client's `env` block), so that a file in a project directory cannot swap the signing key, redirect
+funds or turn trading on.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -354,7 +356,7 @@ environment so that a file in a project directory cannot turn trading on.
 | `MAX_PERPS_ORDER_USD` | `500` | Per Perps order (reduce-only orders are exempt) |
 | `MAX_PERPS_LEVERAGE` | `5` | Highest leverage `set_perps_leverage` accepts |
 | `MAX_TRANSFER_USD` | `100` | Per transfer |
-| `MAX_PRICE_DEVIATION` | `0.10` | Refuse prices this far through the book or mark |
+| `MAX_PRICE_DEVIATION` | `0.10` | Refuse prices this far through the book: 0.10 pUSD for prediction markets, 10% of the mark for Perps |
 | `TRANSFER_ALLOWLIST` | | Comma-separated recipients other than your own wallet |
 | `BUILDER_API_KEY`, `BUILDER_SECRET`, `BUILDER_PASSPHRASE`, `BUILDER_CODE`, `PERPS_BUILDER` | | Builder program attribution |
 | `SESSION_FILE`, `PERPS_SESSION_FILE`, `JOURNAL_FILE` | `~/.config/mcp-server-polymarket/…` | Stored credentials and the write journal |

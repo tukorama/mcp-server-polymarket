@@ -19,6 +19,10 @@ from typing import Any
 
 # Signed Perps requests are valid for five minutes; keep bodies a little longer than that.
 BODY_TTL_SECONDS = 15 * 60
+# A send that has not finished after this long belongs to a process that died mid-request.
+STALE_PENDING_SECONDS = 120
+# Outcomes that still block an identical write: in flight, unknown, or refused only on resend.
+BLOCKING = ("pending", "unknown", "resend_rejected")
 # A refused resend says nothing about the first attempt, which may have gone through, so it
 # still counts toward the daily limit.
 SPENDING = ("pending", "sent", "unknown", "resend_rejected")
@@ -51,6 +55,11 @@ class Journal:
             """CREATE TABLE IF NOT EXISTS writes (
                 id TEXT PRIMARY KEY, created REAL, tool TEXT, endpoint TEXT, summary TEXT,
                 usd TEXT, status TEXT, fingerprint TEXT, body BLOB, response TEXT)"""
+        )
+        # The process that sent these died before learning the outcome: that is unknown.
+        self.db.execute(
+            "UPDATE writes SET status = 'unknown' WHERE status = 'pending' AND created < ?",
+            (_now() - STALE_PENDING_SECONDS,),
         )
 
     def close(self) -> None:
@@ -98,16 +107,17 @@ class Journal:
         return [Entry(*row) for row in rows]
 
     def pending_duplicate(self, fingerprint: str) -> Entry | None:
-        """An identical write whose outcome became unknown in the last 15 minutes.
+        """An identical write still in flight, or whose outcome became unknown, in the last 15
+        minutes.
 
         That is as long as its body is kept for a resend; after that the block lifts, and the
         daily limit still counts it.
         """
         self._expire()
         row = self.db.execute(
-            "SELECT * FROM writes WHERE fingerprint = ? AND status = 'unknown' "
-            "AND created >= ? ORDER BY created DESC LIMIT 1",
-            (fingerprint, _now() - BODY_TTL_SECONDS),
+            f"SELECT * FROM writes WHERE fingerprint = ? AND status IN "
+            f"({','.join('?' * len(BLOCKING))}) AND created >= ? ORDER BY created DESC LIMIT 1",
+            (fingerprint, *BLOCKING, _now() - BODY_TTL_SECONDS),
         ).fetchone()
         return Entry(*row) if row else None
 

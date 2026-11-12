@@ -13,8 +13,17 @@ _SECRET_NAMES = (
     r"|proxy_?key|apiKey"
 )
 _PATTERNS = [
+    # A quoted value is masked up to its closing quote, spaces included.
     (
-        re.compile(rf"(?i)(['\"]?(?:{_SECRET_NAMES})['\"]?\s*[:=]\s*['\"]?)[^'\"\s,}}]+"),
+        re.compile(rf"(?i)(['\"]?(?:{_SECRET_NAMES})['\"]?\s*[:=]\s*(['\"]))(?:(?!\2).)+"),
+        r"\1***",
+    ),
+    # An unquoted value, after an optional auth scheme ("Authorization: Bearer <token>").
+    (
+        re.compile(
+            rf"(?i)(['\"]?(?:{_SECRET_NAMES})['\"]?\s*[:=]\s*(?:(?:bearer|basic)\s+)?)"
+            r"[^'\"\s,}]+"
+        ),
         r"\1***",
     ),
     (re.compile(r"(?i)(\bbearer\s+)[\w+/=.-]+"), r"\1***"),
