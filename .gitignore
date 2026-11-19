@@ -1,0 +1,15 @@
+__pycache__/
+.venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.env
+session.json
+perps_session.json
+journal.sqlite3
+*.key
+.claude/
+.DS_Store
+.langgraph_api/

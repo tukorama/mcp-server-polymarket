@@ -1,0 +1,2951 @@
+{
+ "sources": [
+  "bridge-openapi.yaml",
+  "clob-openapi.yaml",
+  "combos-rfq-openapi.yaml",
+  "gamma-openapi.yaml",
+  "openapi.json (from documentation pages)",
+  "perps-openapi.json",
+  "relayer-openapi.yaml"
+ ],
+ "endpoints": [
+  {
+   "service": "BRIDGE",
+   "method": "POST",
+   "path": "/deposit",
+   "query": [],
+   "source": "bridge-openapi.yaml"
+  },
+  {
+   "service": "BRIDGE",
+   "method": "POST",
+   "path": "/quote",
+   "query": [],
+   "source": "bridge-openapi.yaml"
+  },
+  {
+   "service": "BRIDGE",
+   "method": "GET",
+   "path": "/status/{address}",
+   "query": [
+    "cursor",
+    "limit",
+    "paginate"
+   ],
+   "source": "bridge-openapi.yaml"
+  },
+  {
+   "service": "BRIDGE",
+   "method": "GET",
+   "path": "/supported-assets",
+   "query": [],
+   "source": "bridge-openapi.yaml"
+  },
+  {
+   "service": "BRIDGE",
+   "method": "POST",
+   "path": "/withdraw",
+   "query": [],
+   "source": "bridge-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "DELETE",
+   "path": "/auth/api-key",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "POST",
+   "path": "/auth/api-key",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/auth/api-keys",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/auth/ban-status/closed-only",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "DELETE",
+   "path": "/auth/builder-api-key",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/auth/builder-api-key",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "POST",
+   "path": "/auth/builder-api-key",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/auth/derive-api-key",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/balance-allowance",
+   "query": [
+    "asset_type",
+    "signature_type",
+    "token_id"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "PUT",
+   "path": "/balance-allowance",
+   "query": [
+    "asset_type",
+    "signature_type",
+    "token_id"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/balance-allowance/update",
+   "query": [
+    "asset_type",
+    "signature_type",
+    "token_id"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "POST",
+   "path": "/batch-prices-history",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/book",
+   "query": [
+    "token_id"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/books",
+   "query": [
+    "token_ids"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "POST",
+   "path": "/books",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/builder/trades",
+   "query": [
+    "after",
+    "asset_id",
+    "before",
+    "builder_code",
+    "id",
+    "market",
+    "next_cursor"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "DELETE",
+   "path": "/cancel-all",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "DELETE",
+   "path": "/cancel-market-orders",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "DELETE",
+   "path": "/cancel-wallet-orders",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/clob-markets/{condition_id}",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/data/order/{orderID}",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/data/orders",
+   "query": [
+    "asset_id",
+    "id",
+    "market",
+    "next_cursor"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/data/trades",
+   "query": [
+    "after",
+    "asset_id",
+    "before",
+    "id",
+    "maker_address",
+    "market",
+    "next_cursor"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/data/wallet-open-orders",
+   "query": [
+    "asset_id",
+    "cursor",
+    "market",
+    "session_keys"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/fee-rate",
+   "query": [
+    "token_id"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/fee-rate/{token_id}",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "POST",
+   "path": "/heartbeats",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/last-trade-price",
+   "query": [
+    "token_id"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/last-trades-prices",
+   "query": [
+    "token_ids"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "POST",
+   "path": "/last-trades-prices",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/markets-by-token/{token_id}",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "POST",
+   "path": "/markets/live-activity",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/markets/live-activity/{condition_id}",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/midpoint",
+   "query": [
+    "token_id"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/midpoints",
+   "query": [
+    "token_ids"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "POST",
+   "path": "/midpoints",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/neg-risk",
+   "query": [
+    "token_id"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/neg-risk/{token_id}",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "DELETE",
+   "path": "/notifications",
+   "query": [
+    "ids"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/notifications",
+   "query": [
+    "signature_type"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "DELETE",
+   "path": "/order",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "POST",
+   "path": "/order",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/order-scoring",
+   "query": [
+    "order_id"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "DELETE",
+   "path": "/orders",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "POST",
+   "path": "/orders",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/orders-scoring",
+   "query": [
+    "order_ids"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "POST",
+   "path": "/orders-scoring",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/price",
+   "query": [
+    "side",
+    "token_id"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/prices",
+   "query": [
+    "sides",
+    "token_ids"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "POST",
+   "path": "/prices",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/prices-history",
+   "query": [
+    "endTs",
+    "fidelity",
+    "interval",
+    "market",
+    "startTs"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/rebates/current",
+   "query": [
+    "date",
+    "maker_address"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/rewards/markets/current",
+   "query": [
+    "next_cursor",
+    "sponsored"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/rewards/markets/multi",
+   "query": [
+    "event_id",
+    "event_title",
+    "max_price",
+    "max_spread",
+    "max_volume_24hr",
+    "min_price",
+    "min_spread",
+    "min_volume_24hr",
+    "next_cursor",
+    "order_by",
+    "page_size",
+    "position",
+    "q",
+    "tag_slug"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/rewards/markets/{condition_id}",
+   "query": [
+    "next_cursor",
+    "sponsored"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/rewards/user",
+   "query": [
+    "date",
+    "maker_address",
+    "next_cursor",
+    "signature_type",
+    "sponsored"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/rewards/user/markets",
+   "query": [
+    "date",
+    "favorite_markets",
+    "maker_address",
+    "next_cursor",
+    "no_competition",
+    "only_mergeable",
+    "only_open_orders",
+    "only_open_positions",
+    "order_by",
+    "page_size",
+    "position",
+    "q",
+    "signature_type",
+    "sponsored",
+    "tag_slug"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/rewards/user/percentages",
+   "query": [
+    "maker_address",
+    "signature_type"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/rewards/user/total",
+   "query": [
+    "date",
+    "maker_address",
+    "signature_type",
+    "sponsored"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/sampling-markets",
+   "query": [
+    "next_cursor"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/sampling-simplified-markets",
+   "query": [
+    "next_cursor"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/simplified-markets",
+   "query": [
+    "next_cursor"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/spread",
+   "query": [
+    "token_id"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "POST",
+   "path": "/spreads",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/tick-size",
+   "query": [
+    "token_id"
+   ],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/tick-size/{token_id}",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/time",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "POST",
+   "path": "/v1/heartbeats",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "CLOB",
+   "method": "GET",
+   "path": "/v1/user/rate-limit-tier",
+   "query": [],
+   "source": "clob-openapi.yaml"
+  },
+  {
+   "service": "COMBOS",
+   "method": "POST",
+   "path": "/v1/maker/confirmations",
+   "query": [],
+   "source": "combos-rfq-openapi.yaml"
+  },
+  {
+   "service": "COMBOS",
+   "method": "POST",
+   "path": "/v1/maker/quotes",
+   "query": [],
+   "source": "combos-rfq-openapi.yaml"
+  },
+  {
+   "service": "COMBOS",
+   "method": "POST",
+   "path": "/v1/maker/quotes/cancel",
+   "query": [],
+   "source": "combos-rfq-openapi.yaml"
+  },
+  {
+   "service": "COMBOS",
+   "method": "GET",
+   "path": "/v1/rfq/combo-markets",
+   "query": [
+    "cursor",
+    "exclude",
+    "limit"
+   ],
+   "source": "combos-rfq-openapi.yaml"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/activity",
+   "query": [
+    "condition",
+    "cursor",
+    "end",
+    "event_id",
+    "exclude_deposits_withdrawals",
+    "limit",
+    "side",
+    "sort_by",
+    "sort_direction",
+    "start",
+    "type",
+    "user"
+   ],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/activity/combos",
+   "query": [
+    "condition",
+    "cursor",
+    "limit",
+    "user"
+   ],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/approvals",
+   "query": [
+    "user"
+   ],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/biggest-winners",
+   "query": [
+    "category",
+    "cursor",
+    "limit",
+    "time_period"
+   ],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/builders/leaderboard",
+   "query": [
+    "cursor",
+    "limit",
+    "time_period"
+   ],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/builders/volume",
+   "query": [
+    "interval",
+    "limit"
+   ],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/holders",
+   "query": [
+    "condition",
+    "cursor",
+    "include_pnl",
+    "limit",
+    "min_balance"
+   ],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/leaderboard",
+   "query": [
+    "category",
+    "cursor",
+    "limit",
+    "sort_by",
+    "time_period",
+    "user"
+   ],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/live-volume",
+   "query": [
+    "event_id"
+   ],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/oi",
+   "query": [
+    "condition"
+   ],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/positions",
+   "query": [
+    "condition",
+    "cursor",
+    "end",
+    "event_id",
+    "filter_amount",
+    "filter_type",
+    "include_archived",
+    "limit",
+    "sort_by",
+    "sort_direction",
+    "start",
+    "status",
+    "title",
+    "user"
+   ],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/positions/combos",
+   "query": [
+    "condition",
+    "cursor",
+    "limit",
+    "sort_by",
+    "sort_direction",
+    "status",
+    "updated_after",
+    "updated_before",
+    "user"
+   ],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/prices-history",
+   "query": [
+    "as_of",
+    "bucket_seconds",
+    "cursor",
+    "end",
+    "interval",
+    "limit",
+    "start",
+    "token_id"
+   ],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/resolutions",
+   "query": [
+    "condition",
+    "event_id",
+    "question_id"
+   ],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/status",
+   "query": [],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/tokens",
+   "query": [
+    "condition",
+    "token_id"
+   ],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/trades",
+   "query": [
+    "condition",
+    "cursor",
+    "end",
+    "event_id",
+    "filter_amount",
+    "filter_type",
+    "limit",
+    "side",
+    "start",
+    "taker_only",
+    "user"
+   ],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/user-pnl",
+   "query": [
+    "fidelity",
+    "interval",
+    "user"
+   ],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/user-stats",
+   "query": [
+    "user"
+   ],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/user-volume",
+   "query": [
+    "end",
+    "start",
+    "user"
+   ],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "DATA",
+   "method": "GET",
+   "path": "/v2/value",
+   "query": [
+    "condition",
+    "user"
+   ],
+   "source": "data-api-v2 (documentation pages)"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/comments",
+   "query": [
+    "ascending",
+    "get_positions",
+    "holders_only",
+    "limit",
+    "offset",
+    "order",
+    "parent_entity_id",
+    "parent_entity_type"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/comments/user_address/{user_address}",
+   "query": [
+    "ascending",
+    "limit",
+    "offset",
+    "order"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/comments/{id}",
+   "query": [
+    "get_positions"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/events",
+   "query": [
+    "active",
+    "archived",
+    "ascending",
+    "closed",
+    "cyom",
+    "end_date_max",
+    "end_date_min",
+    "exclude_tag_id",
+    "featured",
+    "id",
+    "include_chat",
+    "include_template",
+    "limit",
+    "liquidity_max",
+    "liquidity_min",
+    "offset",
+    "order",
+    "recurrence",
+    "related_tags",
+    "slug",
+    "start_date_max",
+    "start_date_min",
+    "tag_id",
+    "tag_slug",
+    "volume_max",
+    "volume_min"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/events/creators",
+   "query": [
+    "ascending",
+    "creator_handle",
+    "creator_name",
+    "limit",
+    "offset",
+    "order"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/events/creators/{id}",
+   "query": [],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/events/keyset",
+   "query": [
+    "after_cursor",
+    "ascending",
+    "closed",
+    "created_by",
+    "cyom",
+    "end_date_max",
+    "end_date_min",
+    "event_date",
+    "event_week",
+    "exclude_tag_id",
+    "featured",
+    "featured_order",
+    "game_id",
+    "id",
+    "include_best_lines",
+    "include_chat",
+    "include_children",
+    "include_template",
+    "limit",
+    "liquidity_max",
+    "liquidity_min",
+    "live",
+    "locale",
+    "offset",
+    "order",
+    "parent_event_id",
+    "partner_slug",
+    "recurrence",
+    "related_tags",
+    "series_id",
+    "slug",
+    "start_date_max",
+    "start_date_min",
+    "start_time_max",
+    "start_time_min",
+    "tag_id",
+    "tag_match",
+    "tag_slug",
+    "title_search",
+    "volume_max",
+    "volume_min"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/events/pagination",
+   "query": [
+    "ascending",
+    "include_chat",
+    "include_template",
+    "limit",
+    "offset",
+    "order",
+    "recurrence"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/events/results",
+   "query": [
+    "ascending",
+    "limit",
+    "offset",
+    "order"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/events/slug/{slug}",
+   "query": [
+    "include_chat",
+    "include_template"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/events/{id}",
+   "query": [
+    "include_chat",
+    "include_template"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/events/{id}/comments/count",
+   "query": [],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/events/{id}/tags",
+   "query": [],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/events/{id}/tweet-count",
+   "query": [],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/markets",
+   "query": [
+    "ascending",
+    "clob_token_ids",
+    "closed",
+    "condition_ids",
+    "cyom",
+    "end_date_max",
+    "end_date_min",
+    "game_id",
+    "id",
+    "include_tag",
+    "limit",
+    "liquidity_num_max",
+    "liquidity_num_min",
+    "offset",
+    "order",
+    "question_ids",
+    "related_tags",
+    "rewards_min_size",
+    "slug",
+    "sports_market_types",
+    "start_date_max",
+    "start_date_min",
+    "tag_id",
+    "uma_resolution_status",
+    "volume_num_max",
+    "volume_num_min"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "POST",
+   "path": "/markets/abridged",
+   "query": [],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "POST",
+   "path": "/markets/information",
+   "query": [],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/markets/keyset",
+   "query": [
+    "after_cursor",
+    "ascending",
+    "clob_token_ids",
+    "closed",
+    "condition_ids",
+    "cyom",
+    "decimalized",
+    "end_date_max",
+    "end_date_min",
+    "game_id",
+    "id",
+    "include_tag",
+    "limit",
+    "liquidity_num_max",
+    "liquidity_num_min",
+    "locale",
+    "offset",
+    "order",
+    "question_ids",
+    "related_tags",
+    "rfq_enabled",
+    "slug",
+    "sports_market_types",
+    "start_date_max",
+    "start_date_min",
+    "tag_id",
+    "tag_match",
+    "uma_resolution_status",
+    "volume_num_max",
+    "volume_num_min"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/markets/slug/{slug}",
+   "query": [
+    "include_tag"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/markets/{id}",
+   "query": [
+    "include_tag"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/markets/{id}/description",
+   "query": [],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/markets/{id}/tags",
+   "query": [],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/profiles/user_address/{user_address}",
+   "query": [],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/public-profile",
+   "query": [
+    "address"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/public-search",
+   "query": [
+    "ascending",
+    "cache",
+    "events_status",
+    "events_tag",
+    "exclude_tag_id",
+    "keep_closed_markets",
+    "limit_per_type",
+    "optimized",
+    "page",
+    "q",
+    "recurrence",
+    "search_profiles",
+    "search_tags",
+    "sort"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/series",
+   "query": [
+    "ascending",
+    "categories_ids",
+    "categories_labels",
+    "closed",
+    "exclude_events",
+    "include_chat",
+    "limit",
+    "offset",
+    "order",
+    "recurrence",
+    "slug"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/series-summary/slug/{slug}",
+   "query": [],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/series-summary/{id}",
+   "query": [],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/series/{id}",
+   "query": [
+    "include_chat"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/series/{id}/comments/count",
+   "query": [],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/sports",
+   "query": [],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/sports/market-types",
+   "query": [],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/status",
+   "query": [],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/tags",
+   "query": [
+    "ascending",
+    "include_template",
+    "is_carousel",
+    "limit",
+    "offset",
+    "order"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/tags/slug/{slug}",
+   "query": [
+    "include_template"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/tags/slug/{slug}/related-tags",
+   "query": [
+    "omit_empty",
+    "status"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/tags/slug/{slug}/related-tags/tags",
+   "query": [
+    "omit_empty",
+    "status"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/tags/{id}",
+   "query": [
+    "include_template"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/tags/{id}/related-tags",
+   "query": [
+    "omit_empty",
+    "status"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/tags/{id}/related-tags/tags",
+   "query": [
+    "omit_empty",
+    "status"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/teams",
+   "query": [
+    "abbreviation",
+    "ascending",
+    "league",
+    "limit",
+    "name",
+    "offset",
+    "order"
+   ],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "GAMMA",
+   "method": "GET",
+   "path": "/teams/{id}",
+   "query": [],
+   "source": "gamma-openapi.yaml"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/auto-cancel",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/backstops",
+   "query": [
+    "cursor",
+    "end_timestamp",
+    "start_timestamp"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/balances",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "PATCH",
+   "path": "/v1/account/builder",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/builder-approvals",
+   "query": [
+    "builder"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "POST",
+   "path": "/v1/account/builder-approvals",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/builder-earnings",
+   "query": [
+    "as_of_sequence",
+    "cursor",
+    "end_timestamp",
+    "start_timestamp"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/builder-earnings-summary",
+   "query": [
+    "as_of_sequence",
+    "end_timestamp",
+    "start_timestamp"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/config",
+   "query": [
+    "instrument_id"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/credentials",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/deposits",
+   "query": [
+    "deposit_status",
+    "end_timestamp",
+    "hash",
+    "start_timestamp"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/equity",
+   "query": [
+    "end_timestamp",
+    "interval",
+    "start_timestamp"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/fills",
+   "query": [
+    "cursor",
+    "end_timestamp",
+    "instrument_id",
+    "sort",
+    "start_timestamp"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/funding",
+   "query": [
+    "end_timestamp",
+    "instrument_id",
+    "start_timestamp"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "POST",
+   "path": "/v1/account/internal-transfer",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/internal-transfers",
+   "query": [
+    "direction",
+    "end_timestamp",
+    "start_timestamp"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "POST",
+   "path": "/v1/account/invite",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/limits",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/notifications",
+   "query": [
+    "cursor",
+    "limit",
+    "since_seq"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "POST",
+   "path": "/v1/account/notifications/read",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/open-orders",
+   "query": [
+    "instrument_id"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/orders",
+   "query": [
+    "client_order_id",
+    "end_timestamp",
+    "instrument_id",
+    "order_id",
+    "start_timestamp"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/pnl",
+   "query": [
+    "end_timestamp",
+    "interval",
+    "start_timestamp"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/portfolio",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "DELETE",
+   "path": "/v1/account/proxy",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "POST",
+   "path": "/v1/account/proxy",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/referral",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "POST",
+   "path": "/v1/account/referral",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/rewards",
+   "query": [
+    "date",
+    "end_date",
+    "limit",
+    "start_date"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/stats",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "POST",
+   "path": "/v1/account/withdraw",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/account/withdrawals",
+   "query": [
+    "end_timestamp",
+    "hash",
+    "start_timestamp",
+    "withdrawal_status"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "POST",
+   "path": "/v1/blp/enroll",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/blp/enrollment",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/blp/liquidations",
+   "query": [
+    "cursor",
+    "end_timestamp",
+    "sort",
+    "start_timestamp"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/assets",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/bbo",
+   "query": [
+    "instrument_id"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/book",
+   "query": [
+    "depth",
+    "instrument_id"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/builder",
+   "query": [
+    "address"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/competition",
+   "query": [
+    "competition_id"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/competition/account",
+   "query": [
+    "address",
+    "competition_id"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/competition/leaderboard",
+   "query": [
+    "competition_id",
+    "include_unqualified",
+    "limit",
+    "offset"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/competition/widget",
+   "query": [
+    "address"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/competitions",
+   "query": [
+    "address"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/exchange",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/exchange-stats",
+   "query": [
+    "end_timestamp",
+    "start_timestamp"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/fees",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/fills",
+   "query": [
+    "address",
+    "cursor",
+    "end_timestamp",
+    "instrument_id",
+    "sort",
+    "start_timestamp"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/funding",
+   "query": [
+    "end_timestamp",
+    "instrument_id",
+    "start_timestamp"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/index",
+   "query": [
+    "asset"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/instruments",
+   "query": [
+    "category",
+    "instrument_id",
+    "instrument_type"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/invite",
+   "query": [
+    "address",
+    "code"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/klines",
+   "query": [
+    "end_timestamp",
+    "instrument_id",
+    "interval",
+    "start_timestamp"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/leaderboard",
+   "query": [
+    "address",
+    "limit",
+    "offset",
+    "sort_by",
+    "window"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/limit-tiers",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/mark-history",
+   "query": [
+    "end_timestamp",
+    "instrument_id",
+    "interval",
+    "start_timestamp"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/ping",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/portfolio",
+   "query": [
+    "address"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/position-fills",
+   "query": [
+    "address",
+    "cursor",
+    "instrument_id",
+    "sort"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "POST",
+   "path": "/v1/info/position-snapshots",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/registered",
+   "query": [
+    "address"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/statistics",
+   "query": [
+    "instrument_id"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/tickers",
+   "query": [
+    "instrument_id"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/time",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "GET",
+   "path": "/v1/info/trades",
+   "query": [
+    "end_timestamp",
+    "instrument_id",
+    "start_timestamp"
+   ],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "PATCH",
+   "path": "/v1/trade/auto-cancel",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "PATCH",
+   "path": "/v1/trade/leverage",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "PATCH",
+   "path": "/v1/trade/leverage/batch",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "PATCH",
+   "path": "/v1/trade/margin",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "DELETE",
+   "path": "/v1/trade/orders",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "PATCH",
+   "path": "/v1/trade/orders",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "POST",
+   "path": "/v1/trade/orders",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "DELETE",
+   "path": "/v1/trade/orders-coid",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "PATCH",
+   "path": "/v1/trade/orders-coid",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "PERPS",
+   "method": "DELETE",
+   "path": "/v1/trade/orders/all",
+   "query": [],
+   "source": "perps-openapi.json"
+  },
+  {
+   "service": "RELAYER",
+   "method": "GET",
+   "path": "/deployed",
+   "query": [
+    "address",
+    "type"
+   ],
+   "source": "relayer-openapi.yaml"
+  },
+  {
+   "service": "RELAYER",
+   "method": "GET",
+   "path": "/nonce",
+   "query": [
+    "address",
+    "type"
+   ],
+   "source": "relayer-openapi.yaml"
+  },
+  {
+   "service": "RELAYER",
+   "method": "GET",
+   "path": "/relay-payload",
+   "query": [
+    "address",
+    "type"
+   ],
+   "source": "relayer-openapi.yaml"
+  },
+  {
+   "service": "RELAYER",
+   "method": "GET",
+   "path": "/relayer/api/keys",
+   "query": [],
+   "source": "relayer-openapi.yaml"
+  },
+  {
+   "service": "RELAYER",
+   "method": "POST",
+   "path": "/submit",
+   "query": [],
+   "source": "relayer-openapi.yaml"
+  },
+  {
+   "service": "RELAYER",
+   "method": "GET",
+   "path": "/transaction",
+   "query": [
+    "id"
+   ],
+   "source": "relayer-openapi.yaml"
+  },
+  {
+   "service": "RELAYER",
+   "method": "GET",
+   "path": "/transactions",
+   "query": [],
+   "source": "relayer-openapi.yaml"
+  }
+ ],
+ "operations": [
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "AuthReceive",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "AuthSend",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "AutoCancelReceive",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "AutoCancelSend",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BBOSubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BBOSubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BBOUnsubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BBOUnsubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BBOUpdate",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BackstopSubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BackstopSubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BackstopUnsubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BackstopUnsubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BackstopUpdate",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BalancesSubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BalancesSubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BalancesUnsubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BalancesUnsubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BalancesUpdate",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BookSubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BookSubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BookUnsubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BookUnsubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BookUpdate",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BuilderFillsSubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BuilderFillsSubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BuilderFillsUnsubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BuilderFillsUnsubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "BuilderFillsUpdate",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "CancelAllReceive",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "CancelAllSend",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "CancelOrdersCOIDReceive",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "CancelOrdersCOIDSend",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "CancelOrdersReceive",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "CancelOrdersSend",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "DepositsSubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "DepositsSubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "DepositsUnsubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "DepositsUnsubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "DepositsUpdate",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "FillsSubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "FillsSubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "FillsUnsubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "FillsUnsubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "FillsUpdate",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "FundingSubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "FundingSubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "FundingUnsubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "FundingUnsubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "FundingUpdate",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "KlinesSubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "KlinesSubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "KlinesUnsubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "KlinesUnsubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "KlinesUpdate",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "ModifyOrdersCOIDReceive",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "ModifyOrdersCOIDSend",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "ModifyOrdersReceive",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "ModifyOrdersSend",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "NotificationsSubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "NotificationsSubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "NotificationsUnsubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "NotificationsUnsubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "NotificationsUpdate",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "OrdersSubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "OrdersSubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "OrdersUnsubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "OrdersUnsubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "OrdersUpdate",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "PingReceive",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "PingSend",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "PlaceOrdersReceive",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "PlaceOrdersSend",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "PortfolioSubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "PortfolioSubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "PortfolioUnsubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "PortfolioUnsubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "PortfolioUpdate",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "StatisticsSubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "StatisticsSubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "StatisticsUnsubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "StatisticsUnsubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "StatisticsUpdate",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "TickersSubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "TickersSubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "TickersUnsubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "TickersUnsubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "TickersUpdate",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "TpslSubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "TpslSubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "TpslUnsubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "TpslUnsubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "TpslUpdate",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "TradesSubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "TradesSubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "TradesUnsubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "TradesUnsubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "TradesUpdate",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "UpdateLeverageReceive",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "UpdateLeverageSend",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "UpdateLeveragesReceive",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "UpdateLeveragesSend",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "UpdateMarginReceive",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "UpdateMarginSend",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "WithdrawalsSubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "WithdrawalsSubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "WithdrawalsUnsubscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "WithdrawalsUnsubscribeResponse",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-perps.json",
+   "operation": "WithdrawalsUpdate",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-rfq.json",
+   "operation": "acknowledgeConfirmation",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-rfq.json",
+   "operation": "acknowledgeQuote",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-rfq.json",
+   "operation": "acknowledgeQuoteCancel",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-rfq.json",
+   "operation": "authResult",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-rfq.json",
+   "operation": "authenticate",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-rfq.json",
+   "operation": "cancelQuote",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-rfq.json",
+   "operation": "receiveConfirmationRequest",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-rfq.json",
+   "operation": "receiveError",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-rfq.json",
+   "operation": "receiveExecutionUpdate",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-rfq.json",
+   "operation": "receiveRfqRequest",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-rfq.json",
+   "operation": "receiveTradeBroadcast",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-rfq.json",
+   "operation": "respondConfirmation",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-rfq.json",
+   "operation": "submitQuote",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-sports.json",
+   "operation": "ping",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-sports.json",
+   "operation": "pong",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-sports.json",
+   "operation": "receiveSportsUpdate",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-user.json",
+   "operation": "ping",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-user.json",
+   "operation": "pong",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-user.json",
+   "operation": "receiveOrder",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-user.json",
+   "operation": "receiveTrade",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi-user.json",
+   "operation": "subscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi-user.json",
+   "operation": "updateSubscription",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi.json",
+   "operation": "ping",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi.json",
+   "operation": "pong",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi.json",
+   "operation": "receiveBestBidAsk",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi.json",
+   "operation": "receiveBook",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi.json",
+   "operation": "receiveLastTradePrice",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi.json",
+   "operation": "receiveMarketResolved",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi.json",
+   "operation": "receiveNewMarket",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi.json",
+   "operation": "receivePriceChange",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi.json",
+   "operation": "receiveTickSizeChange",
+   "action": "send"
+  },
+  {
+   "source": "asyncapi.json",
+   "operation": "subscribe",
+   "action": "receive"
+  },
+  {
+   "source": "asyncapi.json",
+   "operation": "updateSubscription",
+   "action": "receive"
+  },
+  {
+   "source": "connect-wss.json",
+   "operation": "market.publish",
+   "action": "receive"
+  },
+  {
+   "source": "connect-wss.json",
+   "operation": "market.subscribe",
+   "action": "send"
+  }
+ ]
+}

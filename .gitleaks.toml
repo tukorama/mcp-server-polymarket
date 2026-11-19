@@ -1,0 +1,32 @@
+title = "mcp-server-polymarket gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "polymarket-evm-private-key"
+description = "Polymarket EVM 32-byte hex private key assignment"
+regex = '''(?i)(?:polymarket[_-]?(?:private|signing)[_-]?key|private[_-]?key)\s*[:=]\s*['"]?(?:0x)?[0-9a-fA-F]{64}\b'''
+tags = ["key", "evm", "polymarket"]
+
+[[rules]]
+id = "polymarket-ed25519-key"
+description = "Polymarket Perps Ed25519 proxy or owner key assignment"
+regex = '''(?i)(?:ed25519[_-]?(?:private|signing|seed)|perps[_-]?proxy[_-]?key)\s*[:=]\s*['"]?[A-Za-z0-9+/_-]{32,}={0,2}'''
+tags = ["key", "ed25519", "polymarket"]
+
+[[rules]]
+id = "polymarket-hmac-secret"
+description = "Polymarket CLOB, Relayer, or Builder API secret/passphrase assignment"
+regex = '''(?i)(?:polymarket[_-]?(?:api|builder|relayer)[_-]?(?:secret|passphrase)|api[_-]?(?:secret|passphrase))\s*[:=]\s*['"]?[A-Za-z0-9+/_-]{24,}={0,2}'''
+tags = ["secret", "hmac", "polymarket"]
+
+[allowlist]
+description = "Allow test fixtures, deterministic Anvil keys, lockfile hashes, and public Polygon ConditionalTokens address"
+paths = [
+    '''^uv\.lock$''',
+    '''^tests/''',
+]
+regexes = [
+    '''^0x4D97DCd97eC945f40cF65F87097ACe5EA0476045$''',
+]
